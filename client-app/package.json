@@ -1,0 +1,25 @@
+{
+  "name": "medicalfield-client-app",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173",
+    "test:e2e": "vite-node tests/e2e.mjs"
+  },
+  "dependencies": {
+    "dexie": "^4.0.10",
+    "dexie-react-hooks": "^1.1.7",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "fake-indexeddb": "^6.2.6",
+    "vite": "^6.0.3",
+    "vite-node": "^3.2.4",
+    "vite-plugin-pwa": "^0.21.1"
+  }
+}

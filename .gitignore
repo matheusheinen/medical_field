@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build/
+target/
+.venv/
+__pycache__/
+*.pyc
+.env
+logs/
+.pids/
+emails_enviados/
+dev-dist/
+
+# Material de apoio pessoal (fora do repositório)
+docs/final_project_as_2026b.md

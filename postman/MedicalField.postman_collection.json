@@ -1,0 +1,1526 @@
+{
+  "info": {
+    "name": "MedicalField API",
+    "description": "Coleção para validar as rotas do MedicalField via gateway Nginx.\nAjuste a variável baseUrl para http://IP-DA-VM/api. Execute as pastas em ordem (Collection Runner).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Autenticação",
+      "item": [
+        {
+          "name": "Login profissional (CRM)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipoRegistro\": \"CRM\",\n  \"registro\": \"12345\",\n  \"senha\": \"senha123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Única rota pública. Salva o token na variável {{token}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json(); pm.collectionVariables.set('token', j.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login administrador (portal)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipoRegistro\": \"ADM\",\n  \"registro\": \"admin\",\n  \"senha\": \"senha123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('tokenAdmin', pm.response.json().token);",
+                  "pm.collectionVariables.set('token', pm.response.json().token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login inválido (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipoRegistro\": \"CRM\",\n  \"registro\": \"12345\",\n  \"senha\": \"errada\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 401', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Quem sou eu",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rota protegida SEM token (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/atendimento",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "atendimento"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 401', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Cadastros de apoio",
+      "item": [
+        {
+          "name": "Listar medicamentos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/medicamento",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "medicamento"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json(); if (j.length) pm.collectionVariables.set('medicamentoId', j.find(m => m.nome.startsWith('Glicose'))?.id ?? j[0].id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar pessoas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pessoa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pessoa"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar profissionais (ADMIN)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/profissional",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "profissional"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 (admin) ou 403', () => pm.expect([200,403]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Pessoa / Prontuário / Atendimento",
+      "item": [
+        {
+          "name": "Cadastrar pessoa",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{opId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pessoa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pessoa"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{pessoaId}}\",\n  \"nome\": \"Paciente Postman\",\n  \"cpf\": \"555.666.777-88\",\n  \"dataNascimento\": \"1990-03-15\",\n  \"sexo\": \"F\",\n  \"email\": \"paciente@example.com\",\n  \"contatoEmergenciaNome\": \"Familiar Postman\",\n  \"contatoEmergenciaEmail\": \"familiar@example.com\",\n  \"versao\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 CRIADO', () => { pm.response.to.have.status(201); pm.expect(pm.response.json().status).to.eql('CRIADO'); });"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// gera ids novos (UUID) para pessoa/prontuário/atendimento/operação",
+                  "['pessoaId','prontuarioId','atendimentoId','opId'].forEach(k => pm.collectionVariables.set(k, pm.variables.replaceIn('{{$guid}}')));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cadastrar pessoa de novo (idempotente)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{opId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pessoa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pessoa"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{pessoaId}}\",\n  \"nome\": \"Paciente Postman\",\n  \"cpf\": \"555.666.777-88\",\n  \"dataNascimento\": \"1990-03-15\",\n  \"sexo\": \"F\",\n  \"email\": \"paciente@example.com\",\n  \"contatoEmergenciaNome\": \"Familiar Postman\",\n  \"contatoEmergenciaEmail\": \"familiar@example.com\",\n  \"versao\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Mesmo Idempotency-Key: o servidor não regrava e devolve DUPLICADO."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('DUPLICADO', () => pm.expect(pm.response.json().status).to.eql('DUPLICADO'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cadastrar prontuário",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/prontuario",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "prontuario"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{prontuarioId}}\",\n  \"pessoaId\": \"{{pessoaId}}\",\n  \"tipoSanguineo\": \"AB+\",\n  \"alergias\": \"Dipirona\",\n  \"comorbidades\": \"Diabetes tipo 2\",\n  \"versao\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar prontuários",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/prontuario",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "prontuario"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Prontuário de uma pessoa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/prontuario/{{pessoaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "prontuario",
+                "{{pessoaId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cadastrar atendimento",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/atendimento",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "atendimento"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{atendimentoId}}\",\n  \"prontuarioId\": \"{{prontuarioId}}\",\n  \"pessoaId\": \"{{pessoaId}}\",\n  \"dataHora\": \"2026-11-10T14:30:00.000Z\",\n  \"localOcorrencia\": \"RS-287, km 45\",\n  \"queixaPrincipal\": \"Hipoglicemia\",\n  \"paSistolica\": 110,\n  \"paDiastolica\": 70,\n  \"freqCardiaca\": 98,\n  \"freqRespiratoria\": 18,\n  \"saturacaoO2\": 97,\n  \"temperatura\": 36.4,\n  \"glicemia\": 45,\n  \"glasgowOcular\": 3,\n  \"glasgowVerbal\": 4,\n  \"glasgowMotora\": 6,\n  \"glasgowTotal\": 13,\n  \"triagemManchester\": \"AMARELO\",\n  \"triagemStart\": \"VERDE\",\n  \"procedimentos\": \"Acesso venoso periférico\",\n  \"destino\": \"HSC Santa Cruz do Sul\",\n  \"medicamentos\": [\n    {\n      \"medicamentoId\": \"{{medicamentoId}}\",\n      \"dose\": 20,\n      \"unidade\": \"mL\",\n      \"via\": \"IV\",\n      \"horario\": \"2026-11-10T14:35:00.000Z\"\n    }\n  ],\n  \"versao\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar atendimentos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/atendimento",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "atendimento"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atendimentos de uma pessoa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/atendimento/{{pessoaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "atendimento",
+                "{{pessoaId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ficha completa do atendimento",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/atendimento/detalhe/{{atendimentoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "atendimento",
+                "detalhe",
+                "{{atendimentoId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Sincronização offline-first",
+      "item": [
+        {
+          "name": "Pull (servidor → cliente)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sync/pull?desde=2026-01-01T00:00:00.000Z",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sync",
+                "pull"
+              ],
+              "query": [
+                {
+                  "key": "desde",
+                  "value": "2026-01-01T00:00:00.000Z"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Retorna tudo que mudou desde 'desde'. Sem o parâmetro, retorna tudo."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Push (cliente → servidor) com conflito",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sync/push",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sync",
+                "push"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dispositivoId\": \"postman\",\n  \"operacoes\": [\n    {\n      \"opId\": \"{{$guid}}\",\n      \"entidade\": \"prontuario\",\n      \"dados\": {\n        \"id\": \"{{prontuarioId}}\",\n        \"pessoaId\": \"{{pessoaId}}\",\n        \"tipoSanguineo\": \"AB+\",\n        \"alergias\": \"Látex\",\n        \"comorbidades\": \"Diabetes tipo 2\",\n        \"versao\": 0,\n        \"atualizadoEm\": \"2026-11-10T15:00:00.000Z\"\n      }\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "versao=0 com o servidor na versão 1 => conflito. Prontuário usa a Strategy MERGE: alergias são unidas."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('conflito resolvido por MERGE', () => { const r = pm.response.json().resultados[0]; pm.expect(r.status).to.eql('CONFLITO_RESOLVIDO'); pm.expect(r.registro.alergias).to.include('Dipirona'); pm.expect(r.registro.alergias).to.include('Látex'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Enviar logs do modo offline",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/log",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "log"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dispositivoId\": \"postman\",\n  \"logs\": [\n    {\n      \"id\": \"{{$guid}}\",\n      \"dataHora\": \"2026-11-10T14:31:00.000Z\",\n      \"metodo\": \"POST\",\n      \"rota\": \"/atendimento (offline)\",\n      \"statusCode\": 201,\n      \"tempoMs\": 4.1\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Documentos (PDF e e-mail)",
+      "item": [
+        {
+          "name": "Gerar ficha em PDF",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/documento/atendimento/{{atendimentoId}}/pdf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "documento",
+                "atendimento",
+                "{{atendimentoId}}",
+                "pdf"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "No Postman use 'Send and Download' para salvar o arquivo."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('PDF', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Enviar ficha por e-mail",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/documento/atendimento/{{atendimentoId}}/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "documento",
+                "atendimento",
+                "{{atendimentoId}}",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destinatario\": \"familiar@example.com\",\n  \"mensagem\": \"Segue a ficha do atendimento.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Auditoria e logs (ADMIN)",
+      "item": [
+        {
+          "name": "Login administrador",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipoRegistro\": \"ADM\",\n  \"registro\": \"admin\",\n  \"senha\": \"senha123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('tokenAdmin', pm.response.json().token);",
+                  "pm.collectionVariables.set('token', pm.response.json().token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auditoria de alterações",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auditoria?limite=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auditoria"
+              ],
+              "query": [
+                {
+                  "key": "limite",
+                  "value": "50"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auditoria de um registro",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auditoria?entidadeId={{prontuarioId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auditoria"
+              ],
+              "query": [
+                {
+                  "key": "entidadeId",
+                  "value": "{{prontuarioId}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logs de acesso",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/log?limite=100",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "log"
+              ],
+              "query": [
+                {
+                  "key": "limite",
+                  "value": "100"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Cadastros (ADMIN)",
+      "item": [
+        {
+          "name": "Cadastrar medicamento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('novoMedicamentoId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Cetamina\",\n  \"principioAtivo\": \"Cloridrato de cetamina\",\n  \"apresentacao\": \"Frasco 50 mg/mL 10 mL\",\n  \"viaPadrao\": \"IV\",\n  \"doseMaxima\": 100,\n  \"unidade\": \"mg\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/medicamento",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "medicamento"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cadastrar medicamento sem nome (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doseMaxima\": 5,\n  \"unidade\": \"mg\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/medicamento",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "medicamento"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cadastrar medicamento como socorrista (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"X\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/medicamento",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "medicamento"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Inativar medicamento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('inativado', () => pm.expect(pm.response.json().ativo).to.eql(false));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Cetamina\",\n  \"principioAtivo\": \"Cloridrato de cetamina\",\n  \"apresentacao\": \"Frasco 50 mg/mL 10 mL\",\n  \"viaPadrao\": \"IV\",\n  \"doseMaxima\": 100,\n  \"unidade\": \"mg\",\n  \"ativo\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/medicamento/{{novoMedicamentoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "medicamento",
+                "{{novoMedicamentoId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar medicamentos incluindo inativos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('inclui inativos', () => pm.expect(pm.response.json().some(m => !m.ativo)).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/medicamento?todos=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "medicamento"
+              ],
+              "query": [
+                {
+                  "key": "todos",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cadastrar profissional",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('novoProfissionalId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Enf. Teste Postman\",\n  \"tipoRegistro\": \"COREN\",\n  \"registro\": \"{{$timestamp}}\",\n  \"uf\": \"RS\",\n  \"email\": \"teste.postman@example.com\",\n  \"senha\": \"senhaForte1\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/profissional",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "profissional"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Inativar profissional",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('inativado', () => pm.expect(pm.response.json().ativo).to.eql(false));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Enf. Teste Postman\",\n  \"uf\": \"RS\",\n  \"email\": \"teste.postman@example.com\",\n  \"ativo\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/profissional/{{novoProfissionalId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "profissional",
+                "{{novoProfissionalId}}"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost/api"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "tokenAdmin",
+      "value": ""
+    },
+    {
+      "key": "pessoaId",
+      "value": ""
+    },
+    {
+      "key": "prontuarioId",
+      "value": ""
+    },
+    {
+      "key": "atendimentoId",
+      "value": ""
+    },
+    {
+      "key": "opId",
+      "value": ""
+    },
+    {
+      "key": "medicamentoId",
+      "value": ""
+    },
+    {
+      "key": "novoMedicamentoId",
+      "value": ""
+    },
+    {
+      "key": "novoProfissionalId",
+      "value": ""
+    }
+  ]
+}

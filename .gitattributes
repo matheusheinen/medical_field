@@ -1,0 +1,3 @@
+# Fins de linha LF em todo o repositório (scripts .sh e systemd rodam na VM Linux)
+* text=auto eol=lf
+*.png binary

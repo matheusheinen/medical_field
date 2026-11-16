@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540" width="1000" height="540" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <title>MedicalField - Arquitetura</title>
+  <defs>
+    <marker id="seta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#37474f"/>
+    </marker>
+    <style>
+      .grupo { fill: none; stroke-width: 2; }
+      .caixa { fill: #fff; stroke: #90a4ae; stroke-width: 1.4; }
+      .titulo { font-size: 15px; font-weight: 600; fill: #263238; }
+      .sub { font-size: 12.5px; fill: #607d8b; }
+      .rotulo { font-size: 16px; font-weight: 700; }
+      .linha { stroke: #37474f; stroke-width: 1.8; fill: none; marker-end: url(#seta); }
+      .nota { font-size: 12.5px; fill: #546e7a; }
+    </style>
+  </defs>
+
+  <rect width="1000" height="540" fill="#fff"/>
+  <text x="500" y="36" text-anchor="middle" font-size="22" font-weight="700" fill="#0b4f6c">MedicalField · Arquitetura</text>
+
+  <!-- ================= Dispositivo ================= -->
+  <rect class="grupo" x="20" y="60" width="290" height="440" rx="14" stroke="#1e88e5" fill="#f3f8fd"/>
+  <text class="rotulo" x="40" y="90" fill="#1565c0">Dispositivo da ambulância</text>
+
+  <rect class="caixa" x="40" y="110" width="250" height="62" rx="8"/>
+  <text class="titulo" x="56" y="136">App de atendimento</text>
+  <text class="sub" x="56" y="156">React (PWA) · chave Online/Offline</text>
+
+  <rect class="caixa" x="40" y="200" width="250" height="62" rx="8" fill="#fffbea" stroke="#f9a825"/>
+  <text class="titulo" x="56" y="226">Banco local</text>
+  <text class="sub" x="56" y="246">IndexedDB: pacientes, atendimentos…</text>
+
+  <rect class="caixa" x="40" y="290" width="250" height="62" rx="8" fill="#fffbea" stroke="#f9a825"/>
+  <text class="titulo" x="56" y="316">Fila de envio (Outbox)</text>
+  <text class="sub" x="56" y="336">o que ainda não foi sincronizado</text>
+
+  <path class="linha" d="M165 172 V198"/>
+  <path class="linha" d="M165 262 V288"/>
+
+  <text class="nota" x="40" y="400">1. Tudo é gravado primeiro no aparelho,</text>
+  <text class="nota" x="40" y="418">    com ou sem conexão.</text>
+  <text class="nota" x="40" y="446">2. Quando a conexão volta, a fila é</text>
+  <text class="nota" x="40" y="464">    enviada automaticamente.</text>
+
+  <!-- ================= Ligação ================= -->
+  <path class="linha" d="M290 321 H328 V195 H418"/>
+  <text class="nota" x="335" y="262" font-weight="600" fill="#37474f">sincroniza</text>
+
+  <!-- ================= Servidor ================= -->
+  <rect class="grupo" x="400" y="60" width="580" height="440" rx="14" stroke="#43a047" fill="#f4faf3"/>
+  <text class="rotulo" x="420" y="90" fill="#2e7d32">Servidor central (VM)</text>
+
+  <rect class="caixa" x="620" y="100" width="210" height="50" rx="8"/>
+  <text class="titulo" x="636" y="122">Portal administrativo</text>
+  <text class="sub" x="636" y="140">React · consulta e cadastros</text>
+  <path class="linha" d="M725 150 V168"/>
+
+  <rect class="caixa" x="420" y="170" width="540" height="50" rx="8" fill="#eceff1" stroke="#78909c"/>
+  <text class="titulo" x="690" y="193" text-anchor="middle">API Gateway (Nginx)</text>
+  <text class="sub" x="690" y="211" text-anchor="middle">um único endereço de entrada para o app e o portal</text>
+
+  <path class="linha" d="M504 220 V248"/>
+  <path class="linha" d="M690 220 V248"/>
+  <path class="linha" d="M876 220 V248"/>
+
+  <rect class="caixa" x="420" y="250" width="168" height="70" rx="8" stroke="#43a047"/>
+  <text class="titulo" x="504" y="279" text-anchor="middle">Autenticação</text>
+  <text class="sub" x="504" y="299" text-anchor="middle">Node.js + TypeScript</text>
+
+  <rect class="caixa" x="606" y="250" width="168" height="70" rx="8" stroke="#43a047"/>
+  <text class="titulo" x="690" y="279" text-anchor="middle">Clínico e sincronização</text>
+  <text class="sub" x="690" y="299" text-anchor="middle">Java 21</text>
+
+  <rect class="caixa" x="792" y="250" width="168" height="70" rx="8" stroke="#43a047"/>
+  <text class="titulo" x="876" y="279" text-anchor="middle">Documentos</text>
+  <text class="sub" x="876" y="299" text-anchor="middle">Python · PDF e e-mail</text>
+
+  <path class="linha" d="M504 320 L600 378"/>
+  <path class="linha" d="M690 320 V378"/>
+  <path class="linha" d="M840 320 L780 378"/>
+  <path class="linha" d="M915 320 V378"/>
+
+  <rect class="caixa" x="530" y="380" width="320" height="60" rx="8" fill="#fff3e0" stroke="#ef6c00"/>
+  <text class="titulo" x="690" y="405" text-anchor="middle">Banco central</text>
+  <text class="sub" x="690" y="425" text-anchor="middle">PostgreSQL · dados, auditoria e logs</text>
+
+  <rect class="caixa" x="870" y="380" width="90" height="60" rx="8" fill="#fce4ec" stroke="#c2185b"/>
+  <text class="titulo" x="915" y="405" text-anchor="middle">E-mail</text>
+  <text class="sub" x="915" y="425" text-anchor="middle">SMTP</text>
+
+  <text class="nota" x="420" y="472">Três serviços independentes, em linguagens diferentes, que validam o mesmo login (JWT).</text>
+</svg>

@@ -1,0 +1,8 @@
+# Versões mínimas testadas; o pip escolhe a mais nova compatível com o Python da VM
+fastapi>=0.115.6
+uvicorn[standard]>=0.32.1
+reportlab>=4.2.5
+PyJWT>=2.10.1
+httpx>=0.28.1
+psycopg[binary]>=3.2.3
+pydantic>=2.10.3

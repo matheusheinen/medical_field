@@ -1,0 +1,14 @@
+[Unit]
+Description=MedicalField - clinical-service (Java)
+After=network.target postgresql.service
+
+[Service]
+User=medicalfield
+WorkingDirectory=/opt/medicalfield/services/clinical-service
+EnvironmentFile=/opt/medicalfield/.env
+ExecStart=/usr/bin/java -Xmx256m -jar target/clinical-service.jar
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
