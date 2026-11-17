@@ -10,11 +10,11 @@ Três formas de comprovar o funcionamento, complementares:
 
 ## Preparação (antes da apresentação)
 
-1. Recriar o banco com os dados iniciais: `sudo ./scripts/install_vm.sh --reset-db` (ou rodar `01_schema.sql` e `02_seed.sql`).
+1. Recriar o banco com os dados iniciais: `sudo bash scripts/install_vm.sh --reset-db` (ou rodar `01_schema.sql` e `02_seed.sql`).
 2. Conferir os serviços: `systemctl status medicalfield-auth medicalfield-clinical medicalfield-document`.
-3. Abrir **duas janelas lado a lado**: Portal (`http://IP/admin/`) à esquerda e App cliente (`http://IP/app/`) à direita. Use uma janela anônima ou outro navegador para o cliente, ou limpe os dados do site (F12 → Application → Clear storage) para começar com o banco local vazio.
+3. Abrir **duas janelas lado a lado**: Portal (`http://177.44.248.79/admin/`) à esquerda e App cliente (`http://177.44.248.79/app/`) à direita. Use uma janela anônima ou outro navegador para o cliente, ou limpe os dados do site (F12 → Application → Clear storage) para começar com o banco local vazio.
 4. Terminal com `psql` aberto para o passo 9: `psql -h localhost -U medicalfield -d medicalfield`.
-5. Configurar o SMTP no `.env` (passo 17) e reiniciar o document-service.
+5. Ter acesso à caixa de entrada do e-mail de destino (passo 17). O SMTP já está configurado no `.env` da VM e é preservado nas reinstalações.
 
 ## A. Roteiro na interface gráfica
 
@@ -36,7 +36,7 @@ Três formas de comprovar o funcionamento, complementares:
 | 14 | Cliente | Chave → **Online** (não clicar em mais nada) | O Observer dispara a sincronização sozinho: "Conexão restabelecida: 3 enviado(s) • 3 log(s) offline enviado(s)…". Contador volta a 0; atendimento **Sincronizado** |
 | 15 | Portal | **Prontuários** e **Atendimentos** → **Atualizar** | O novo paciente e o atendimento **aparecem**. Em **Logs de acesso**, filtrar o serviço `client-app`: os 3 logs offline. Em **Auditoria**: 3 INSERT com origem SYNC_PUSH |
 | 16 | Portal ou Cliente | Abrir o atendimento → **Gerar PDF** (no cliente: botão **PDF**) | Abre a Ficha de Atendimento em PDF (paciente, alergias em vermelho, sinais vitais, Glasgow, triagem colorida, medicamentos, assinatura) |
-| 17 | Portal ou Cliente | **Enviar por e-mail** para o familiar | Mensagem de sucesso; mostrar a caixa de entrada com o e-mail e o PDF anexado |
+| 17 | Portal ou Cliente | **Enviar por e-mail** (o campo já vem com o e-mail do paciente; pode trocar pelo do familiar) | Mensagem de sucesso; mostrar a caixa de entrada com o e-mail e o PDF anexado |
 
 ### Testes extras recomendados (mostram os requisitos de sincronização)
 
@@ -90,7 +90,7 @@ cd services/clinical-service && mvn test
 ## C. Validação das rotas (Postman / Insomnia / Newman)
 
 1. Postman → **Import** → `postman/MedicalField.postman_collection.json`.
-2. Na coleção, aba **Variables**: `baseUrl` = `http://IP-DA-VM/api`.
+2. **Import** também `postman/MedicalField-vm.postman_environment.json` e selecione o ambiente **MedicalField - VM** (`baseUrl` = `http://177.44.248.79/api`).
 3. **Run collection**: as pastas 0 a 6 rodam em ordem; o login salva o token automaticamente.
 
-Linha de comando: `npx newman run postman/MedicalField.postman_collection.json --env-var baseUrl=http://IP-DA-VM/api` → **33 requisições, 0 falhas**.
+Linha de comando: `npx newman run postman/MedicalField.postman_collection.json -e postman/MedicalField-vm.postman_environment.json` → **33 requisições, 0 falhas**.

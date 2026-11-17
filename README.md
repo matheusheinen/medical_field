@@ -2,7 +2,7 @@
 
 **Prontuário eletrônico de emergência para equipes de atendimento pré-hospitalar, pensado para funcionar sem sinal.**
 
-No local da ocorrência a equipe registra o paciente, os sinais vitais, a escala de Glasgow, a classificação de Manchester e os medicamentos aplicados, **com ou sem internet**. Os registros ficam no próprio aparelho e vão para o servidor central assim que a conexão volta: sem duplicar, sem perder alterações concorrentes e com trilha completa de auditoria. A central acompanha tudo pelo portal administrativo, gera a ficha em **PDF** e a envia por **e-mail** para o familiar ou o hospital de destino.
+No local da ocorrência a equipe registra o paciente, os sinais vitais, a escala de Glasgow, a classificação de Manchester e os medicamentos aplicados, **com ou sem internet**. Os registros ficam no próprio aparelho e vão para o servidor central assim que a conexão volta: sem duplicar, sem perder alterações concorrentes e com trilha completa de auditoria. A central acompanha tudo pelo portal administrativo, gera a ficha em **PDF** e a envia por **e-mail** para o paciente ou o familiar.
 
 ![Arquitetura](docs/arquitetura.svg)
 
@@ -38,15 +38,15 @@ No local da ocorrência a equipe registra o paciente, os sinais vitais, a escala
 
 **Servidor Ubuntu (instalação completa):**
 ```bash
-sudo ./scripts/install_vm.sh             # dependências, build, Nginx e systemd
-sudo ./scripts/install_vm.sh --reset-db  # recria o banco com os dados de exemplo
+sudo bash scripts/install_vm.sh             # dependências, build, Nginx e systemd
+sudo bash scripts/install_vm.sh --reset-db  # recria o banco com os dados de exemplo
 ```
-Portal em `http://SERVIDOR/admin/` e app em `http://SERVIDOR/app/`. Desenvolvimento local: [docs/06_DEPLOY_VM.md](docs/06_DEPLOY_VM.md) §6.6.
+Portal em `http://SERVIDOR/admin/` e app em `http://SERVIDOR/app/` (na VM da Univates: `http://177.44.248.79`). Desenvolvimento local: [docs/06_DEPLOY_VM.md](docs/06_DEPLOY_VM.md) §6.6.
 
 **Testes:**
 ```bash
 cd client-app && PGPASSWORD=medicalfield MF_API_URL=http://localhost/api npm run test:e2e   # fluxo completo
-npx newman run postman/MedicalField.postman_collection.json --env-var baseUrl=http://localhost/api  # 33 requisições
+npx newman run postman/MedicalField.postman_collection.json -e postman/MedicalField-vm.postman_environment.json  # 33 requisições
 ```
 
 ### Acessos dos dados de exemplo
@@ -66,7 +66,7 @@ Válidos apenas com o seed (`database/02_seed.sql`). Troque as senhas antes de q
 |---|---|
 | Requisitos × evidências (onde cada exigência foi atendida) | [docs/00_REQUISITOS_E_EVIDENCIAS.md](docs/00_REQUISITOS_E_EVIDENCIAS.md) |
 | Arquitetura e tecnologias | [docs/01_ARQUITETURA.md](docs/01_ARQUITETURA.md) |
-| APIs | [docs/02_API.md](docs/02_API.md) · [coleção Postman](postman/MedicalField.postman_collection.json) |
+| APIs | [docs/02_API.md](docs/02_API.md) · [Swagger / OpenAPI](ferramentas/openapi.yaml) · [coleção Postman](postman/MedicalField.postman_collection.json) |
 | Bancos de dados (central e local) | [docs/03_BANCO_DE_DADOS.md](docs/03_BANCO_DE_DADOS.md) |
 | Padrões de projeto | [docs/04_PADROES_DE_PROJETO.md](docs/04_PADROES_DE_PROJETO.md) |
 | Roteiro de testes | [docs/05_ROTEIRO_DE_TESTES.md](docs/05_ROTEIRO_DE_TESTES.md) |

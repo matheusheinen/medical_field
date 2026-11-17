@@ -1,6 +1,6 @@
 # 2. Documentação das APIs
 
-Base (via gateway): `http://IP-DA-VM/api`. Todas as rotas exigem o header `Authorization: Bearer <token>`, **exceto** `POST /auth/login`.
+Base (via gateway): `http://177.44.248.79/api` na VM e `http://localhost:5173/api` no desenvolvimento local. Todas as rotas exigem o header `Authorization: Bearer <token>`, **exceto** `POST /auth/login`.
 
 Headers opcionais aceitos por todos os serviços:
 
@@ -245,4 +245,4 @@ Lista a trilha de `auditoria_alteracao`. Sem `entidadeId`, devolve as últimas a
 
 ## 2.8 Validação com Postman
 
-Importe `postman/MedicalField.postman_collection.json`, ajuste a variável `baseUrl` para `http://IP-DA-VM/api` e execute a coleção no **Collection Runner**: são 33 requisições com testes automáticos (login, 401 sem token, cadastros, 403 sem perfil ADMIN, idempotência, conflito MERGE, logs, PDF, e-mail, auditoria).
+Importe `postman/MedicalField.postman_collection.json` e um dos ambientes (`MedicalField-vm.postman_environment.json` → `http://177.44.248.79/api`, ou `MedicalField-local.postman_environment.json`) e execute a coleção no **Collection Runner**: são 33 requisições com testes automáticos (login, 401 sem token, cadastros, 403 sem perfil ADMIN, idempotência, conflito MERGE, logs, PDF, e-mail, auditoria).

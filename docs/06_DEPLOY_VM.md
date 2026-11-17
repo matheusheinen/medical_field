@@ -1,6 +1,6 @@
 # 6. Implantação na VM da Univates
 
-> **Situação atual:** o sistema foi instalado na VM da Univates em 22/10/2026, no endereço `177.44.248.79` (portal em `http://177.44.248.79/admin/`, cliente em `http://177.44.248.79/app/`, API em `http://177.44.248.79/api`). Falta configurar o SMTP (seção 6.4). As seções abaixo documentam o procedimento para reinstalar ou atualizar.
+> **Situação atual:** o sistema está instalado na VM da Univates (Ubuntu 26.04, PostgreSQL 18, Python 3.14), no endereço `177.44.248.79`: portal em `http://177.44.248.79/admin/`, cliente em `http://177.44.248.79/app/` e API em `http://177.44.248.79/api`. O envio real de e-mail (Gmail) está configurado. Última atualização: 17/11/2026. As seções abaixo documentam o procedimento para instalar ou atualizar.
 
 ## 6.1 Primeiro acesso à VM
 
@@ -16,7 +16,7 @@ ssh -p PORTA usuario@ENDERECO-DA-VM
 Já dentro da VM, rode estes comandos e guarde a saída (ajudam a diagnosticar qualquer problema):
 
 ```bash
-lsb_release -a                 # versão do Ubuntu (22.04 ou 24.04 são suportadas)
+lsb_release -a                 # versão do Ubuntu (22.04 ou mais novo; a VM usa 26.04)
 sudo -v && echo "tenho sudo"   # precisa de sudo para instalar pacotes
 hostname -I                    # IP da VM (para acessar /admin e /app)
 psql --version; systemctl is-active postgresql   # PostgreSQL já instalado?
@@ -29,26 +29,30 @@ sudo ss -tlnp | grep -E ':80 |:5432 '            # algo já usa a porta 80?
 
 ## 6.2 Enviar o projeto para a VM
 
-**Opção 1 – Git (recomendado):** crie um repositório no GitHub (pode ser privado) e, na VM:
+A VM não precisa de Git: o projeto vai num arquivo `.zip`.
+
+**1. Gerar o zip** no seu computador, na pasta do projeto (só os arquivos versionados; `.env`, `node_modules` etc. ficam de fora):
 ```bash
-git clone https://github.com/SEU_USUARIO/medicalfield.git
-cd medicalfield
+git archive --format=zip --prefix=medicalfield/ -o ../medicalfield.zip HEAD
 ```
-**Opção 2 – Cópia direta** do seu computador:
+
+**2. Copiar para a VM**, de uma destas formas:
+- **WinSCP** (Windows): conectar em `177.44.248.79` com o usuário da VM e arrastar o `medicalfield.zip` para a pasta pessoal (`/home/univates`).
+- **Linha de comando:** `scp ../medicalfield.zip univates@177.44.248.79:~`
+
+**3. Descompactar na VM** (numa pasta nova, para não misturar com versões anteriores):
 ```bash
-scp medicalfield.zip usuario@ENDERECO-DA-VM:~
-ssh usuario@ENDERECO-DA-VM
-sudo apt install -y unzip && unzip medicalfield.zip && cd medicalfield
+rm -rf ~/medicalfield-novo && mkdir ~/medicalfield-novo
+unzip -q ~/medicalfield.zip -d ~/medicalfield-novo && cd ~/medicalfield-novo/medicalfield
 ```
 
 ## 6.3 Instalação automática
 
 ```bash
-chmod +x scripts/*.sh
-sudo ./scripts/install_vm.sh
+sudo bash scripts/install_vm.sh
 ```
 O script (pode ser executado de novo sem problemas):
-1. instala PostgreSQL, Nginx, Java 21 + Maven, Python 3 e Node.js 22;
+1. instala PostgreSQL, Nginx, Java 21+ e Maven, Python 3 e Node.js 22;
 2. copia o projeto para `/opt/medicalfield` e cria o `.env` com um `JWT_SECRET` aleatório (obrigatório: sem ele, ou com o valor de exemplo antigo, os serviços não sobem; um `.env` antigo é corrigido automaticamente);
 3. cria o usuário/banco `medicalfield` e carrega `01_schema.sql` + `02_seed.sql` (só se o banco estiver vazio);
 4. compila os três serviços (`npm ci && tsc`, `mvn package`, `pip install`);
@@ -62,15 +66,15 @@ Aplicação cliente:     http://IP/app/     (CRM 12345 / senha123)
 API (Postman):         http://IP/api/...
 ```
 
-Para atualizar depois de mudar o código: `git pull && sudo ./scripts/install_vm.sh`.
-Para zerar os dados antes da apresentação: `sudo ./scripts/install_vm.sh --reset-db`.
+Para atualizar depois de mudar o código: repetir a seção 6.2 com o zip novo e rodar `sudo bash scripts/install_vm.sh`. O `.env` de `/opt/medicalfield` (segredo do JWT e SMTP) e os dados do banco são preservados. Depois, **Ctrl+F5** no navegador para carregar a versão nova das interfaces.
+Para zerar os dados antes da apresentação: `sudo bash scripts/install_vm.sh --reset-db`.
 
 ## 6.4 Configurar o envio real de e-mail (passo 17)
 
 Sem SMTP, os e-mails são gravados como `.eml` em `/opt/medicalfield/services/document-service/emails_enviados/` (abrem no Outlook/Thunderbird com o PDF anexo). Para enviar de verdade com o Gmail:
 
 1. Na conta Google: **Segurança → Verificação em duas etapas** (ativar) → **Senhas de app** → criar uma senha para "MedicalField" (16 letras).
-2. Editar `sudo nano /opt/medicalfield/.env`:
+2. Editar `sudo nano /opt/medicalfield/.env` (o arquivo fica só na VM; não vai no zip nem no Git):
    ```
    SMTP_HOST=smtp.gmail.com
    SMTP_PORT=587
@@ -115,6 +119,6 @@ O Vite faz o papel do gateway em desenvolvimento (proxy `/api` para as portas 30
 Útil para demonstrar o app **abrindo sem rede** (o Service Worker exige HTTPS ou `localhost`):
 ```bash
 cd client-app && npm run build
-VITE_PROXY_TARGET=http://IP-DA-VM npm run preview   # http://localhost:4173/app/
+VITE_PROXY_TARGET=http://177.44.248.79 npm run preview   # http://localhost:4173/app/
 ```
 Com o app aberto, desligue o Wi-Fi do notebook: o indicador muda para OFFLINE pela rede real, e mesmo recarregando a página o app continua funcionando.

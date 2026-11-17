@@ -14,13 +14,13 @@ O MedicalField segue duas ideias centrais:
 | Cliente | Aplicação cliente (PWA) | React 18 + Vite 6 (JavaScript) | Ficha de atendimento, chave Online/Offline, sincronização |
 | Cliente | Banco local embarcado | IndexedDB via Dexie 4 | Pessoas, prontuários, atendimentos, medicamentos, Outbox, logs offline |
 | Cliente | Service Worker | vite-plugin-pwa (Workbox) | Abre o app mesmo sem internet (cache do app) |
-| Servidor | API Gateway | Nginx 1.24 | Roteia `/api/*` para os serviços, serve as interfaces, repassa o IP real (`X-Real-IP`), CORS |
+| Servidor | API Gateway | Nginx | Roteia `/api/*` para os serviços, serve as interfaces, repassa o IP real (`X-Real-IP`), CORS |
 | Servidor | **auth-service** | **Node.js 22 + TypeScript** (Express, bcrypt, jsonwebtoken) | Login por CRM/COREN/ID de socorrista, emissão de JWT, cadastro de profissionais |
 | Servidor | **clinical-service** | **Java 21** (HttpServer do JDK, JDBC, Jackson) | Pessoa, prontuário, atendimento, medicamentos, sincronização (pull/push), conflitos, auditoria, logs offline |
-| Servidor | **document-service** | **Python 3 + FastAPI** (ReportLab, smtplib, httpx) | Ficha de atendimento em PDF e envio por e-mail com anexo |
-| Servidor | Banco central | PostgreSQL 14+ | Dados consolidados, idempotência, auditoria e logs de acesso |
+| Servidor | **document-service** | **Python 3 + FastAPI** (3.14 na VM; ReportLab, smtplib, httpx) | Ficha de atendimento em PDF e envio por e-mail com anexo |
+| Servidor | Banco central | PostgreSQL 14+ (18 na VM) | Dados consolidados, idempotência, auditoria e logs de acesso |
 | Servidor | Portal administrativo | React 18 + Vite 6 | Login, atendimentos, auditoria, logs e cadastros (pacientes/prontuários, medicamentos, profissionais), com inativação em vez de exclusão |
-| Externo | Servidor SMTP | Gmail/Mailtrap/qualquer SMTP | Entrega do e-mail ao paciente ou familiar |
+| Externo | Servidor SMTP | Gmail (qualquer SMTP serve) | Entrega do e-mail ao paciente ou familiar |
 
 ## 1.2 Por que PWA + IndexedDB (decisão de arquitetura)
 
@@ -97,7 +97,7 @@ O **document-service não acessa as tabelas clínicas**: ele busca a ficha no cl
 
 ## 1.6 Implantação na VM
 
-Tudo roda na mesma VM (Ubuntu), sem contêineres:
+Tudo roda na mesma VM (Ubuntu 26.04, `177.44.248.79`), sem contêineres:
 
 | Processo | Como roda | Porta | Exposto para fora |
 |---|---|---|---|
@@ -122,6 +122,7 @@ medicalfield/
 ├── admin-portal/        Portal administrativo (React): ui/ componentes · paginas/ uma tela por menu
 ├── deploy/              nginx/medicalfield.conf · systemd/*.service
 ├── scripts/             install_vm.sh · dev-start.sh · dev-stop.sh
-├── postman/             MedicalField.postman_collection.json
+├── postman/             coleção + ambientes (local e VM)
+├── ferramentas/         openapi.yaml + Swagger UI (documentação interativa da API)
 └── docs/                esta documentação (00 = índice requisito × evidência)
 ```

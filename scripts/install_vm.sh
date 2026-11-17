@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # =====================================================================
-# MedicalField - instalação completa na VM da Univates (Ubuntu 22.04/24.04)
+# MedicalField - instalação completa na VM da Univates (Ubuntu 22.04 ou mais novo; testado no 26.04)
 #
 #   sudo ./scripts/install_vm.sh              # instala/atualiza tudo
 #   sudo ./scripts/install_vm.sh --reset-db   # também recria o banco com os dados iniciais
 #
-# Pode ser executado de novo a qualquer momento (ex.: depois de um git pull).
+# Pode ser executado de novo a qualquer momento (ex.: depois de copiar uma versão nova do projeto).
 # =====================================================================
 set -euo pipefail
 [ "$(id -u)" -eq 0 ] || { echo "Execute com sudo"; exit 1; }

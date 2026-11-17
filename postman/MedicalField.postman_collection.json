@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "MedicalField API",
-    "description": "Coleção para validar as rotas do MedicalField via gateway Nginx.\nAjuste a variável baseUrl para http://IP-DA-VM/api. Execute as pastas em ordem (Collection Runner).",
+    "description": "Coleção para validar as rotas do MedicalField via gateway Nginx.\nUse o ambiente MedicalField - VM (http://177.44.248.79/api) ou MedicalField - local. Execute as pastas em ordem (Collection Runner).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [

@@ -24,7 +24,7 @@ servers:
     description: VM Ubuntu (Nginx)
     variables:
       ipVm:
-        default: IP-DA-VM
+        default: 177.44.248.79
 security:
   - bearerAuth: []
 

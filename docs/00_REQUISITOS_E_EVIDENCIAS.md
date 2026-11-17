@@ -2,7 +2,7 @@
 
 Este documento percorre **cada exigência** do enunciado (*Trabalho Final – MedicalField*, 4815206 – Arquiteturas de Software, 2026/B) e indica como ela foi atendida, onde está no código e como demonstrá-la. Serve de índice para as três entregas e de guia para a apresentação.
 
-Legenda: ✅ atendido · ⚠️ atendido com ressalva · ⏳ pendente.
+Legenda: ✅ atendido.
 
 ## 0.1 Entregas obrigatórias
 
@@ -22,7 +22,7 @@ Documentos de apoio: [04_PADROES_DE_PROJETO.md](04_PADROES_DE_PROJETO.md) (os se
 | Mínimo de três serviços/APIs autônomos em linguagens diferentes | ✅ | `auth-service` (Node.js + TypeScript), `clinical-service` (Java 21), `document-service` (Python + FastAPI). Cada um é um processo próprio (systemd), com porta própria, e valida o JWT sozinho | `services/*`, `deploy/systemd/*.service` | `systemctl status medicalfield-auth medicalfield-clinical medicalfield-document` |
 | Banco central (servidor) | ✅ | PostgreSQL: dados clínicos, idempotência, auditoria e logs | `database/01_schema.sql` | `psql` → `\dt` |
 | Banco local embarcado no cliente | ✅ | IndexedDB (via Dexie) no dispositivo: dados clínicos, Outbox, logs offline, histórico | `client-app/src/db/localDb.js` | F12 → Application → IndexedDB → `medicalfield` |
-| Execução na VM da Univates (sem contêineres) | ✅ | Instalação nativa por script: pacotes do sistema, Nginx e systemd | `scripts/install_vm.sh`, `deploy/` | Acessar `http://IP-DA-VM/admin/` e `/app/` |
+| Execução na VM da Univates (sem contêineres) | ✅ | Instalação nativa por script: pacotes do sistema, Nginx e systemd. Em execução em `177.44.248.79` (Ubuntu 26.04) | `scripts/install_vm.sh`, `deploy/` | Acessar `http://177.44.248.79/admin/` e `/app/` |
 | Todas as rotas autenticadas, exceto o login | ✅ | JWT obrigatório nos três serviços; `POST /auth/login` é a única rota pública (verificado em 16/11/2026: as 25 rotas sem token respondem 401). Rotas de administração exigem ainda o perfil ADMIN (403 para socorristas). O Swagger automático do FastAPI foi desativado para não haver rota aberta | `auth-service/src/middleware/auth.ts`, `clinical-service/.../http/AuthFilter.java`, `document-service/app/security.py` | Postman: "Rota protegida SEM token (401)" |
 | Autenticação associada às credenciais do profissional (CRM, COREN ou ID de socorrista) | ✅ | Login por `tipoRegistro` (`CRM`, `COREN`, `SOC`, `ADM`) + `registro` + senha (bcrypt). O token carrega id, nome, tipo, registro e perfil | `auth-service/src/index.ts`, tabela `profissional` | Login no cliente com CRM `12345`, COREN `54321` ou `SOC-0001` |
 | Middleware/interceptor de log de acesso em todos os serviços | ✅ | Um interceptor por serviço grava no console e na tabela `log_acesso`. Detalhe dos campos em 0.3 | `auth-service/src/middleware/accessLog.ts`, `clinical-service/.../http/AccessLogFilter.java`, `document-service/app/access_log.py` | Portal → **Logs de acesso**; `journalctl -u medicalfield-clinical -f` |
@@ -31,7 +31,7 @@ Documentos de apoio: [04_PADROES_DE_PROJETO.md](04_PADROES_DE_PROJETO.md) (os se
 | Interface administrativa: autenticar, ver atendimentos e cadastros de apoio | ✅ | Portal React: Visão geral, Atendimentos, Prontuários, Auditoria, Logs de acesso e **cadastros** de pacientes/prontuários, medicamentos e profissionais (criar, editar e inativar; nada é apagado). Medicamentos e profissionais são auditados com origem `PORTAL`; pacientes e prontuários usam a mesma API dos dispositivos (origem `API_DIRETA`, com controle de versão e conflito) | `admin-portal/src/App.jsx`, `admin-portal/src/paginas/` | Roteiro, passos 1–4 e extras E6, E7 e E10 |
 | Inserções manuais via banco de dados | ✅ | Script pronto para o passo 9 | `database/03_novos_medicamentos.sql` | Roteiro, passo 9 |
 | Ficha de Atendimento em PDF para download | ✅ | `GET /documento/atendimento/{id}/pdf` (ReportLab) | `document-service/app/pdf_builder.py`, `main.py` | Roteiro, passo 16 |
-| Envio da ficha anexada por e-mail (paciente ou familiar) | ⚠️ | `POST /documento/atendimento/{id}/email`. Envio real via SMTP do Gmail testado no ambiente local em 16/11/2026. Sem SMTP configurado, o e-mail é gravado em arquivo `.eml`; **falta configurar o SMTP no `.env` da VM** | `document-service/app/email_sender.py`, `main.py` | Roteiro, passo 17 |
+| Envio da ficha anexada por e-mail (paciente ou familiar) | ✅ | `POST /documento/atendimento/{id}/email`. Envio real via SMTP do Gmail, configurado no `.env` da VM e testado em 17/11/2026. O destinatário sugerido é o e-mail do paciente e, na falta dele, o do contato de emergência. Sem SMTP configurado, o e-mail é gravado em arquivo `.eml` | `document-service/app/email_sender.py`, `main.py` | Roteiro, passo 17 |
 
 ## 0.3 Campos do log de acesso
 
@@ -107,10 +107,10 @@ Rotas adicionais: `GET /auth/me`, `GET /auth/profissional`, `GET /pessoa`, `GET 
 | Requisito | Situação | Observação |
 |---|---|---|
 | Mais de uma linguagem nos serviços | ✅ | TypeScript, Java e Python |
-| Execução na VM da Univates | ✅ | Instalado em 22/10/2026. O roteiro completo pela interface na VM ainda precisa ser ensaiado |
+| Execução na VM da Univates | ✅ | Instalado em 22/10/2026 e atualizado em 17/11/2026 (`http://177.44.248.79`), com envio de e-mail real |
 | Rotas autenticadas | ✅ | Só `POST /auth/login` é pública |
 | Logs dos acessos de cada rota | ✅ | Ver 0.3 |
-| Rotas validáveis por Postman/Insomnia | ✅ | Coleção com 33 requisições e testes automáticos (inclui cadastros e 403 sem perfil ADMIN), ambientes prontos (local e VM) e Swagger UI com as 25 rotas (`ferramentas/`, ver [02_API.md](02_API.md)) |
+| Rotas validáveis por Postman/Insomnia | ✅ | Coleção com 33 requisições e testes automáticos (inclui cadastros e 403 sem perfil ADMIN), ambientes prontos (local e VM `177.44.248.79`) e Swagger UI com as 25 rotas (`ferramentas/`, ver [02_API.md](02_API.md)) |
 | Interface gráfica para validar o roteiro | ✅ | Todos os 17 passos são feitos no portal e no cliente (o passo 9 usa o `psql`, como pede o enunciado) |
 
 ### Segurança e privacidade no aparelho
@@ -118,10 +118,4 @@ Rotas adicionais: `GET /auth/me`, `GET /auth/profissional`, `GET /pessoa`, `GET 
 - **Segredo do JWT obrigatório:** os três serviços se recusam a subir sem um `JWT_SECRET` de 32+ caracteres (o valor de exemplo antigo é rejeitado). O `install_vm.sh` e o `dev-start.sh` geram um automaticamente.
 - **Logout limpa o aparelho:** ao sair, o banco local é apagado, para que o próximo profissional não veja os pacientes do anterior. A saída é bloqueada enquanto houver registros não enviados, e a Outbox de um profissional nunca é enviada com o token de outro.
 - **Identidade isolada por requisição:** o clinical-service guarda o profissional autenticado por requisição (não em `HttpExchange.setAttribute`, que no servidor HTTP do JDK é compartilhado entre requisições). Verificado com 400 chamadas simultâneas de dois perfis: o socorrista recebeu 403 em todas as rotas de ADMIN e nenhum log foi atribuído ao profissional errado.
-- **Limitação conhecida:** inativar um profissional no portal impede novos logins, mas um token já emitido vale até expirar (12 h), pois o JWT é *stateless*.
-
-### Pendências conhecidas
-
-1. **SMTP real na VM** para o passo 17 (já funciona no ambiente local) — instruções em [06_DEPLOY_VM.md](06_DEPLOY_VM.md), seção 6.4.
-2. **Atualizar a VM** com a versão atual (rodar `install_vm.sh` de novo, que recompila os serviços) e **ensaiar o roteiro completo**, com o banco recriado (`--reset-db`), mais a coleção Postman no ambiente "MedicalField - VM".
-3. **Pool de conexões** no clinical-service (melhoria): cada requisição abre uma conexão nova com o PostgreSQL. Em teste de carga com 64 requisições simultâneas, 2% falharam por recusa de conexão; no uso normal e na apresentação não ocorre.
+- **Inativação de profissional:** impede novos logins imediatamente; como o JWT é *stateless*, um token já emitido vale até expirar (12 h).
