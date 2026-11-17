@@ -226,6 +226,10 @@ button.perigo:hover:not(:disabled) { background: #8f1c13; border-color: #8f1c13;
   th, td { padding: 9px 12px; }
   /* Botão principal do formulário na largura toda, alinhado aos painéis */
   .rodape-form button.grande { width: 100%; min-width: 0; }
+  /* O campo de data/hora do navegador não encolhe abaixo de ~210px: com duas colunas estreitas
+     ele invadia o campo ao lado (Local). No celular ocupa a linha inteira. */
+  .grade .campo:has(input[type='datetime-local']) { grid-column: 1 / -1; }
+  .linha-med input[type='datetime-local'] { grid-column: 1 / -1; }
   /* Abaixo de 16px o iOS dá zoom ao focar o campo */
   input, select, textarea { font-size: 16px; }
 }

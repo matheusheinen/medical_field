@@ -4,5 +4,5 @@ uvicorn[standard]>=0.32.1
 reportlab>=4.2.5
 PyJWT>=2.10.1
 httpx>=0.28.1
-psycopg[binary]>=3.2.3
+psycopg[binary]>=3.2.10   # 3.2.10 = primeira com suporte ao Python 3.14 (Ubuntu 26.04 da VM)
 pydantic>=2.10.3

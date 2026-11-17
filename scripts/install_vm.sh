@@ -79,8 +79,16 @@ cd "$DESTINO/services/clinical-service" && mvn -q -DskipTests package && ls -lh 
 
 passo "6/8 document-service (Python)"
 cd "$DESTINO/services/document-service"
+# .venv criado com outro Python (ex.: o Ubuntu atualizou o python3) não serve mais: recria
+versao_py() { "$1" -c 'import sys; print("%d.%d" % sys.version_info[:2])' 2>/dev/null; }
+if [ -d .venv ] && [ "$(versao_py .venv/bin/python)" != "$(versao_py python3)" ]; then
+  echo "Python mudou ($(versao_py .venv/bin/python || echo '?') -> $(versao_py python3)): recriando .venv"
+  rm -rf .venv
+fi
 [ -d .venv ] || python3 -m venv .venv
-.venv/bin/pip install -q --upgrade pip && .venv/bin/pip install -q -r requirements.txt
+# --upgrade: sem ele, um pacote antigo já instalado "satisfaz" o >= do requirements e nunca é atualizado
+# (foi o que quebrou o psycopg-binary 3.2.3, sem versão para o Python novo)
+.venv/bin/pip install -q --upgrade pip && .venv/bin/pip install -q --upgrade -r requirements.txt
 mkdir -p emails_enviados
 
 passo "7/8 Interfaces gráficas (build) e Nginx"
