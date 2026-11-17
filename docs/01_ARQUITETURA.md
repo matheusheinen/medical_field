@@ -1,128 +1,90 @@
-# 1. Modelo de Arquitetura — MedicalField
+# 1. Modelo de Arquitetura
 
 ![Arquitetura](arquitetura.svg)
 
-## 1.1 Visão geral
+Duas ideias centrais:
 
-O MedicalField segue duas ideias centrais:
+1. **Offline-first:** toda gravação acontece primeiro no banco local do aparelho. A rede serve só para *sincronizar*.
+2. **Microsserviços:** três serviços autônomos, em três linguagens, atrás de um API Gateway (Nginx), com um PostgreSQL central.
 
-1. **Offline-first no dispositivo**: toda gravação acontece primeiro no banco local do dispositivo da ambulância. A rede é usada só para *sincronizar*, nunca para *registrar*.
-2. **Microsserviços no servidor central**: três serviços autônomos, em três linguagens, atrás de um API Gateway (Nginx), compartilhando um banco PostgreSQL.
+## 1.1 Componentes e tecnologias
 
 | Camada | Componente | Tecnologia | Responsabilidade |
 |---|---|---|---|
-| Cliente | Aplicação cliente (PWA) | React 18 + Vite 6 (JavaScript) | Ficha de atendimento, chave Online/Offline, sincronização |
-| Cliente | Banco local embarcado | IndexedDB via Dexie 4 | Pessoas, prontuários, atendimentos, medicamentos, Outbox, logs offline |
-| Cliente | Service Worker | vite-plugin-pwa (Workbox) | Abre o app mesmo sem internet (cache do app) |
-| Servidor | API Gateway | Nginx | Roteia `/api/*` para os serviços, serve as interfaces, repassa o IP real (`X-Real-IP`), CORS |
-| Servidor | **auth-service** | **Node.js 22 + TypeScript** (Express, bcrypt, jsonwebtoken) | Login por CRM/COREN/ID de socorrista, emissão de JWT, cadastro de profissionais |
-| Servidor | **clinical-service** | **Java 21** (HttpServer do JDK, JDBC, Jackson) | Pessoa, prontuário, atendimento, medicamentos, sincronização (pull/push), conflitos, auditoria, logs offline |
-| Servidor | **document-service** | **Python 3 + FastAPI** (3.14 na VM; ReportLab, smtplib, httpx) | Ficha de atendimento em PDF e envio por e-mail com anexo |
-| Servidor | Banco central | PostgreSQL 14+ (18 na VM) | Dados consolidados, idempotência, auditoria e logs de acesso |
-| Servidor | Portal administrativo | React 18 + Vite 6 | Login, atendimentos, auditoria, logs e cadastros (pacientes/prontuários, medicamentos, profissionais), com inativação em vez de exclusão |
-| Externo | Servidor SMTP | Gmail (qualquer SMTP serve) | Entrega do e-mail ao paciente ou familiar |
+| Cliente | App da equipe (PWA) | React 18 + Vite 6 | Ficha de atendimento, chave Online/Offline, sincronização |
+| Cliente | Banco local | IndexedDB via Dexie 4 | Dados clínicos, Outbox, logs offline |
+| Cliente | Service Worker | vite-plugin-pwa (Workbox) | Abre o app sem internet |
+| Servidor | API Gateway | Nginx | Roteia `/api/*`, serve as interfaces, repassa o IP real |
+| Servidor | **auth-service** | Node.js 22 + TypeScript | Login (CRM/COREN/SOC/ADM), JWT, cadastro de profissionais |
+| Servidor | **clinical-service** | Java 21 (HttpServer do JDK, JDBC) | Pessoa, prontuário, atendimento, medicamentos, sync, conflitos, auditoria |
+| Servidor | **document-service** | Python 3 + FastAPI (ReportLab) | Ficha em PDF e envio por e-mail |
+| Servidor | Banco central | PostgreSQL | Dados consolidados, idempotência, auditoria, logs |
+| Servidor | Portal administrativo | React 18 + Vite 6 | Atendimentos, auditoria, logs e cadastros |
+| Externo | SMTP | Gmail | Entrega do e-mail |
 
-## 1.2 Por que PWA + IndexedDB (decisão de arquitetura)
+**Por que PWA + IndexedDB:** roda em qualquer celular, tablet ou notebook pelo navegador e é instalável. O IndexedDB é um banco transacional embarcado, persistente e disponível offline, com tabelas, índices e transações. Ele cumpre o papel que o SQLite teria num app nativo, sem exigir toolchain Android/iOS.
 
-O enunciado pede um **dispositivo móvel** com **banco local embarcado** e operação local irrestrita. As alternativas avaliadas:
-
-| Opção | Banco local | Prós | Contras |
-|---|---|---|---|
-| **PWA (escolhida)** | IndexedDB (Dexie) | Roda em qualquer celular/tablet/notebook pelo navegador; instalável; Service Worker abre o app offline; mesma base de código do portal | IndexedDB não é SQL |
-| Electron/Tauri | SQLite | SQLite é "mais visível" como banco embarcado | Só desktop; empacotamento e instalação mais trabalhosos |
-| App nativo/React Native | SQLite | Experiência móvel nativa | Exige toolchain Android/iOS; curva de aprendizado alta para 1 pessoa em 1 mês |
-
-O **IndexedDB é um banco transacional embarcado no navegador**: fica gravado no próprio dispositivo, sobrevive a reinicializações e funciona sem rede. O Dexie oferece tabelas, índices (inclusive compostos) e transações — o mesmo papel que o SQLite teria.
-
-> **Observação sobre HTTPS:** o Service Worker só é registrado em contexto seguro (HTTPS ou `localhost`). Acessando a VM por `http://IP/app/`, o banco local (IndexedDB), a Outbox e toda a sincronização funcionam normalmente; o que não funciona é **reabrir a página** sem rede. Para demonstrar também isso, rode o cliente no notebook (`npm run preview`, que é `localhost`) apontando para a VM — ver `06_DEPLOY_VM.md`.
-
-## 1.3 Fluxo de sincronização
+## 1.2 Fluxo de sincronização
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor S as Socorrista
-    participant UI as App cliente (UI)
-    participant L as IndexedDB + Outbox
-    participant M as ConnectivityMonitor
+    participant L as App + IndexedDB/Outbox
     participant SM as SyncManager
-    participant GW as Nginx /api
-    participant C as clinical-service (Java)
+    participant C as clinical-service
     participant DB as PostgreSQL
 
-    S->>UI: preenche a ficha (modo OFFLINE)
-    UI->>L: grava pessoa/prontuário/atendimento (PENDENTE)
-    UI->>L: enfileira 3 UpsertCommand (opId, versão-base)
-    Note over L,GW: nada sai do dispositivo — o portal não vê o registro
-    S->>M: chave volta para ONLINE
-    M-->>SM: notifica (Observer): offline → online
-    SM->>GW: POST /log (logs locais do período offline)
-    SM->>GW: POST /sync/push {operacoes:[...]} em ordem
-    GW->>C: encaminha com o JWT
-    loop para cada operação (transação própria)
-        C->>DB: opId já processado? → DUPLICADO
-        C->>DB: id não existe → CRIADO
-        C->>DB: versão igual → ATUALIZADO (versão+1)
-        C->>DB: versão diferente → Strategy (LWW / MERGE) → CONFLITO_RESOLVIDO
-        C->>DB: grava auditoria_alteracao e sync_operacao
+    S->>L: registra a ficha OFFLINE (grava local + enfileira comandos)
+    S->>L: chave volta para ONLINE
+    L-->>SM: ConnectivityMonitor notifica (Observer)
+    SM->>C: POST /log (logs offline) e POST /sync/push (Outbox, em ordem)
+    loop cada operação, em transação própria
+        C->>DB: opId repetido → DUPLICADO · novo → CRIADO · mesma versão → ATUALIZADO
+        C->>DB: versão diferente → Strategy (LWW/MERGE) → CONFLITO_RESOLVIDO
+        C->>DB: grava auditoria e sync_operacao
     end
-    C-->>SM: resultado por operação + registro final
-    SM->>L: remove da Outbox, marca SINCRONIZADO
-    SM->>GW: GET /sync/pull?desde=último
-    C-->>SM: novidades do servidor (ex.: medicamentos novos)
+    C-->>SM: resultado por operação
+    SM->>C: GET /sync/pull?desde=… (novidades do servidor)
 ```
 
-### Garantias
-
-| Requisito | Como é atendido |
+| Garantia | Como |
 |---|---|
-| **Operação local irrestrita** | Toda gravação vai para o IndexedDB primeiro. Com o simulador OFFLINE, `apiClient` recusa qualquer requisição (`OfflineError`). |
-| **Envio quando a conexão voltar** | `ConnectivityMonitor` (Observer) notifica o `SyncManager`, que envia a Outbox automaticamente. Também há o botão "Sincronizar". |
-| **Idempotência** | (1) IDs são UUID gerados no dispositivo; (2) cada comando tem um `opId` registrado em `sync_operacao` — reenvio devolve `DUPLICADO`; (3) conteúdo idêntico devolve `SEM_ALTERACAO`; (4) itens de medicamento sem id recebem id determinístico. |
-| **Tratamento de conflitos** | Controle otimista por `versao`. Divergência → `ConflictStrategy` da entidade: pessoa e atendimento = **LWW** (vence o `atualizadoEm` mais recente); prontuário = **MERGE** (une alergias/comorbidades: nunca perde uma alergia). Configurável por variável de ambiente. |
-| **Rastreabilidade** | `auditoria_alteracao` guarda operação, origem (API_DIRETA/SYNC_PUSH/PORTAL), estratégia, profissional, dispositivo, `opId` e o JSON **antes/depois** (no conflito, as duas versões). |
-| **Ordem** | A Outbox é FIFO; edições repetidas de um registro ainda não enviado são **coalescidas no mesmo lugar** da fila (pessoa sempre antes do prontuário). |
+| Idempotência | UUID gerado no aparelho + `opId` por comando, registrado em `sync_operacao` |
+| Conflitos | Controle otimista por `versao`; pessoa e atendimento = **LWW**, prontuário = **MERGE** (nunca perde uma alergia) |
+| Rastreabilidade | `auditoria_alteracao` com origem, estratégia, profissional, dispositivo, `opId` e JSON antes/depois |
+| Ordem | Outbox FIFO; edições repetidas do mesmo registro são unidas na fila |
 
-## 1.4 Segurança e auditoria de acesso
+## 1.3 Segurança
 
-- **Autenticação**: `POST /auth/login` é a única rota pública. O login usa o tipo de registro (CRM, COREN, SOC, ADM) + número + senha (bcrypt). O token JWT HS256 carrega id, nome, tipo, registro e perfil.
-- **Validação distribuída**: cada serviço valida o JWT por conta própria, com o segredo compartilhado `JWT_SECRET` (não há chamada ao auth-service a cada requisição).
-- **Autorização**: as consultas `GET /log`, `GET /auditoria` e `GET /auth/profissional` exigem perfil `ADMIN`. O `POST /log` (envio dos logs offline) aceita qualquer profissional autenticado.
-- **Logs de acesso** (middleware/interceptor em cada serviço): data/hora, IP do cliente (`X-Real-IP` do Nginx), profissional autenticado, método, rota, status e tempo em ms. Vão para o console (journalctl) e para a tabela `log_acesso`. O filtro de log é o **primeiro** da cadeia, então registra inclusive requisições recusadas (401).
-- **LGPD**: a ficha em PDF e o e-mail informam que contêm dado pessoal sensível de saúde.
+- `POST /auth/login` é a única rota pública. Os outros serviços validam o JWT (HS256) sozinhos, com o segredo compartilhado `JWT_SECRET`.
+- `GET /log`, `GET /auditoria` e os cadastros de medicamentos e profissionais exigem perfil `ADMIN`.
+- Cada serviço tem um interceptor de log de acesso (data/hora, IP, profissional, método, rota, status, tempo), gravado no console e na tabela `log_acesso`.
+- O document-service não lê tabelas clínicas: busca a ficha no clinical-service por HTTP, repassando o token do profissional.
 
-## 1.5 Comunicação entre microsserviços
+## 1.4 Implantação
 
-O **document-service não acessa as tabelas clínicas**: ele busca a ficha no clinical-service por HTTP (`GET /atendimento/detalhe/{id}`), repassando o token do profissional. Assim, quem pede o PDF precisa ter permissão para ver o atendimento, e cada serviço mantém a responsabilidade sobre os seus dados (ele só escreve na tabela comum `log_acesso`).
+Tudo roda na VM da Univates (Ubuntu 26.04, `177.44.248.79`), sem contêineres:
 
-## 1.6 Implantação na VM
-
-Tudo roda na mesma VM (Ubuntu 26.04, `177.44.248.79`), sem contêineres:
-
-| Processo | Como roda | Porta | Exposto para fora |
+| Processo | Execução | Porta | Acesso externo |
 |---|---|---|---|
-| Nginx (gateway + arquivos das interfaces) | serviço do sistema | 80 | Sim |
-| auth-service | systemd `medicalfield-auth` (Node.js) | 3001 | Não, só via `/api/auth/` |
-| clinical-service | systemd `medicalfield-clinical` (`java -jar`) | 8080 | Não, só via `/api/` |
-| document-service | systemd `medicalfield-document` (uvicorn) | 8000 | Não, só via `/api/documento/` |
-| PostgreSQL | serviço do sistema | 5432 | Não |
+| Nginx | serviço do sistema | 80 | `/admin/`, `/app/`, `/api/...` |
+| auth-service | systemd `medicalfield-auth` | 3001 | via `/api/auth/` |
+| clinical-service | systemd `medicalfield-clinical` | 8080 | via `/api/` |
+| document-service | systemd `medicalfield-document` | 8000 | via `/api/documento/` |
+| PostgreSQL | serviço do sistema | 5432 | não |
 
-Caminhos publicados pelo Nginx: `/admin/` (portal), `/app/` (cliente) e `/api/...` (microsserviços). O código fica em `/opt/medicalfield`, a configuração em `/opt/medicalfield/.env` e as interfaces compiladas em `/var/www/medicalfield`. Passo a passo em [06_DEPLOY_VM.md](06_DEPLOY_VM.md).
-
-## 1.7 Estrutura do repositório
+## 1.5 Estrutura do repositório
 
 ```
 medicalfield/
-├── database/            01_schema.sql · 02_seed.sql · 03_novos_medicamentos.sql
-├── services/
-│   ├── auth-service/       Node.js + TypeScript
-│   ├── clinical-service/   Java 21 (pom.xml)
-│   └── document-service/   Python + FastAPI
-├── client-app/          PWA do socorrista (React + Dexie) + tests/e2e.mjs
-├── admin-portal/        Portal administrativo (React): ui/ componentes · paginas/ uma tela por menu
-├── deploy/              nginx/medicalfield.conf · systemd/*.service
-├── scripts/             install_vm.sh · dev-start.sh · dev-stop.sh
-├── postman/             coleção + ambientes (local e VM)
-├── ferramentas/         openapi.yaml + Swagger UI (documentação interativa da API)
-└── docs/                esta documentação (00 = índice requisito × evidência)
+├── services/      auth-service (Node/TS) · clinical-service (Java) · document-service (Python)
+├── client-app/    PWA da equipe (React + Dexie) + tests/e2e.mjs
+├── admin-portal/  portal administrativo (React)
+├── database/      schema, seed e script do passo 9
+├── deploy/        Nginx e systemd
+├── scripts/       install_vm.sh · dev-start.sh · dev-stop.sh
+├── postman/       coleção + ambientes (local e VM)
+├── ferramentas/   openapi.yaml + Swagger UI
+└── docs/          esta documentação
 ```

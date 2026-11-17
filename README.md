@@ -1,26 +1,10 @@
 # MedicalField
 
-**Prontuário eletrônico de emergência para equipes de atendimento pré-hospitalar, pensado para funcionar sem sinal.**
+**Prontuário eletrônico de emergência para atendimento pré-hospitalar, que funciona sem sinal.**
 
-No local da ocorrência a equipe registra o paciente, os sinais vitais, a escala de Glasgow, a classificação de Manchester e os medicamentos aplicados, **com ou sem internet**. Os registros ficam no próprio aparelho e vão para o servidor central assim que a conexão volta: sem duplicar, sem perder alterações concorrentes e com trilha completa de auditoria. A central acompanha tudo pelo portal administrativo, gera a ficha em **PDF** e a envia por **e-mail** para o paciente ou o familiar.
+A equipe registra paciente, sinais vitais, Glasgow, Manchester e medicamentos **com ou sem internet**. Os registros ficam no aparelho e sobem para o servidor central quando a conexão volta, sem duplicar e sem perder alterações concorrentes. A central acompanha tudo pelo portal, gera a ficha em **PDF** e a envia por **e-mail** ao paciente ou familiar.
 
 ![Arquitetura](docs/arquitetura.svg)
-
-## O que o sistema faz
-
-**App da equipe (`/app/`)**: PWA para celular, tablet ou notebook
-- Registro de ocorrência com busca de paciente, cadastro rápido de paciente novo e alerta de dose acima da máxima.
-- Funciona offline: banco local (IndexedDB) e fila de envio (*Outbox*). A sincronização dispara sozinha quando a rede volta.
-- Ficha em PDF direto do aparelho.
-
-**Portal administrativo (`/admin/`)**
-- Visão geral, atendimentos e prontuários consolidados.
-- Cadastros de pacientes/prontuários, medicamentos e profissionais. Nada é apagado: registros são **inativados** e o histórico fica preservado.
-- Auditoria (dados antes/depois de cada alteração e conflito) e logs de acesso de todos os serviços.
-
-**Sincronização**
-- Identificadores gerados no aparelho e um `opId` por operação: reenviar a mesma operação nunca cria registro duplicado.
-- Controle de versão com resolução de conflitos por entidade: *Last-Write-Wins*, *Merge* de campos clínicos ou *Server-Wins*.
 
 ## Componentes
 
@@ -30,48 +14,42 @@ No local da ocorrência a equipe registra o paciente, os sinais vitais, a escala
 | clinical-service | Java 21 (HttpServer do JDK, JDBC, Jackson) | `services/clinical-service` |
 | document-service | Python 3 + FastAPI (ReportLab, SMTP) | `services/document-service` |
 | Banco central | PostgreSQL | `database/` |
-| App da equipe | React + Vite, PWA, IndexedDB (Dexie) | `client-app/` |
+| App da equipe (PWA, offline) | React + Vite, IndexedDB (Dexie) | `client-app/` |
 | Portal administrativo | React + Vite | `admin-portal/` |
 | API Gateway | Nginx | `deploy/nginx/` |
 
 ## Como rodar
 
-**Servidor Ubuntu (instalação completa):**
+**Servidor Ubuntu** (em produção na VM da Univates: `http://177.44.248.79/admin/` e `/app/`):
 ```bash
 sudo bash scripts/install_vm.sh             # dependências, build, Nginx e systemd
-sudo bash scripts/install_vm.sh --reset-db  # recria o banco com os dados de exemplo
+sudo bash scripts/install_vm.sh --reset-db  # também recria o banco com os dados de exemplo
 ```
-Portal em `http://SERVIDOR/admin/` e app em `http://SERVIDOR/app/` (na VM da Univates: `http://177.44.248.79`). Desenvolvimento local: [docs/06_DEPLOY_VM.md](docs/06_DEPLOY_VM.md) §6.6.
 
-**Testes:**
+**Desenvolvimento local** (PostgreSQL com o banco `medicalfield` carregado de `database/01_schema.sql` e `02_seed.sql`):
 ```bash
-cd client-app && PGPASSWORD=medicalfield MF_API_URL=http://localhost/api npm run test:e2e   # fluxo completo
-npx newman run postman/MedicalField.postman_collection.json -e postman/MedicalField-vm.postman_environment.json  # 33 requisições
+./scripts/dev-start.sh                          # sobe os 3 serviços (logs em ./logs)
+cd client-app && npm install && npm run dev     # http://localhost:5173/app/
+cd admin-portal && npm install && npm run dev   # http://localhost:5174/admin/
 ```
+
+**Testes:** `npm run test:e2e` em `client-app/` (fluxo completo), `mvn test` no clinical-service (Strategies) e a coleção Postman (`postman/`, 33 requisições).
 
 ### Acessos dos dados de exemplo
-
-Válidos apenas com o seed (`database/02_seed.sql`). Troque as senhas antes de qualquer uso real.
 
 | Uso | Tipo | Registro | Senha |
 |---|---|---|---|
 | Portal administrativo | ADM | `admin` | `senha123` |
-| App da equipe | CRM | `12345` | `senha123` |
-| App da equipe | COREN | `54321` | `senha123` |
-| App da equipe | SOC | `SOC-0001` | `senha123` |
+| App da equipe | CRM / COREN / SOC | `12345` / `54321` / `SOC-0001` | `senha123` |
 
 ## Documentação
 
 | Assunto | Documento |
 |---|---|
-| Requisitos × evidências (onde cada exigência foi atendida) | [docs/00_REQUISITOS_E_EVIDENCIAS.md](docs/00_REQUISITOS_E_EVIDENCIAS.md) |
-| Arquitetura e tecnologias | [docs/01_ARQUITETURA.md](docs/01_ARQUITETURA.md) |
-| APIs | [docs/02_API.md](docs/02_API.md) · [Swagger / OpenAPI](ferramentas/openapi.yaml) · [coleção Postman](postman/MedicalField.postman_collection.json) |
-| Bancos de dados (central e local) | [docs/03_BANCO_DE_DADOS.md](docs/03_BANCO_DE_DADOS.md) |
-| Padrões de projeto | [docs/04_PADROES_DE_PROJETO.md](docs/04_PADROES_DE_PROJETO.md) |
-| Roteiro de testes | [docs/05_ROTEIRO_DE_TESTES.md](docs/05_ROTEIRO_DE_TESTES.md) |
-| Implantação | [docs/06_DEPLOY_VM.md](docs/06_DEPLOY_VM.md) |
+| Requisitos do enunciado × evidências | [docs/00](docs/00_REQUISITOS_E_EVIDENCIAS.md) |
+| Arquitetura e tecnologias | [docs/01](docs/01_ARQUITETURA.md) |
+| APIs | [docs/02](docs/02_API.md) · [Swagger / OpenAPI](ferramentas/openapi.yaml) · [Postman](postman/) |
+| Bancos de dados | [docs/03](docs/03_BANCO_DE_DADOS.md) |
+| Padrões de projeto | [docs/04](docs/04_PADROES_DE_PROJETO.md) |
 
----
-
-<sub>Desenvolvido como trabalho final de Arquiteturas de Software (Univates, 2026/B). A matriz de requisitos do enunciado está em <a href="docs/00_REQUISITOS_E_EVIDENCIAS.md">docs/00</a>.</sub>
+<sub>Trabalho final de Arquiteturas de Software (Univates, 2026/B).</sub>
