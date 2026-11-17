@@ -12,6 +12,9 @@ erDiagram
     PRONTUARIO ||--o{ ATENDIMENTO : "agrupa"
     ATENDIMENTO ||--o{ ATENDIMENTO_MEDICAMENTO : "administra"
     MEDICAMENTO ||--o{ ATENDIMENTO_MEDICAMENTO : "é usado em"
+    PROFISSIONAL |o--o{ PESSOA : "atualizou por último"
+    PROFISSIONAL |o--o{ PRONTUARIO : "atualizou por último"
+    PROFISSIONAL |o--o{ ATENDIMENTO : "atualizou por último"
 
     PROFISSIONAL {
         uuid id PK
@@ -19,9 +22,11 @@ erDiagram
         varchar tipo_registro "CRM|COREN|SOC|ADM"
         varchar registro "único por tipo"
         char uf
+        varchar email
         varchar senha_hash "bcrypt"
         varchar perfil "ADMIN|SOCORRISTA"
         boolean ativo
+        timestamptz criado_em
     }
     MEDICAMENTO {
         uuid id PK
@@ -40,6 +45,7 @@ erDiagram
         varchar cpf "único quando informado"
         date data_nascimento
         char sexo
+        varchar telefone
         varchar email
         varchar contato_emergencia_nome
         varchar contato_emergencia_email
@@ -59,6 +65,7 @@ erDiagram
         text observacoes
         int versao
         timestamptz atualizado_em
+        uuid atualizado_por FK
         boolean criado_offline
         timestamptz sincronizado_em
     }
@@ -84,8 +91,11 @@ erDiagram
         varchar triagem_manchester
         varchar triagem_start
         text procedimentos
+        text observacoes
         varchar destino
         int versao
+        timestamptz atualizado_em
+        uuid atualizado_por FK
         boolean criado_offline
         timestamptz sincronizado_em
     }
@@ -99,6 +109,8 @@ erDiagram
         timestamptz horario
     }
 ```
+
+`atendimento.profissional_id` é quem **registrou** o atendimento (o usuário do token, nunca o valor enviado no corpo). `atualizado_por`, em pessoa, prontuário e atendimento, é quem fez a **última alteração**; o histórico completo de quem alterou o quê fica em `auditoria_alteracao`.
 
 Tabelas de suporte (sem chave estrangeira, para nunca bloquear o registro de log/auditoria):
 

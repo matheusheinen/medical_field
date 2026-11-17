@@ -15,7 +15,7 @@ export default function FichaAtendimento({ id, aoFechar }) {
   useEffect(() => {
     api(`/atendimento/detalhe/${id}`).then((f) => {
       setFicha(f);
-      setDestinatario(f.pessoa?.contatoEmergenciaEmail || f.pessoa?.email || '');
+      setDestinatario(f.pessoa?.email || f.pessoa?.contatoEmergenciaEmail || '');
     }).catch((e) => setMsg({ tipo: 'erro', texto: e.message }));
   }, [id]);
 

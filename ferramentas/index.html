@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MedicalField API · Swagger</title>
+<!--
+  Documentação interativa da API (Swagger UI + ferramentas/openapi.yaml).
+  Não faz parte do app nem do portal e não é servida pelo Nginx da VM.
+  Uso:  python -m http.server 5500 --directory ferramentas
+        abrir http://localhost:5500/
+-->
+<link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui.css">
+<style>body { margin: 0; background: #fff; }</style>
+</head>
+<body>
+<div id="swagger"></div>
+<script src="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui-bundle.js"></script>
+<script>
+  const ui = SwaggerUIBundle({
+    url: 'openapi.yaml',
+    dom_id: '#swagger',
+    deepLinking: true,
+    persistAuthorization: true,   // o token sobrevive a um F5
+    displayRequestDuration: true,
+    tryItOutEnabled: true,
+    docExpansion: 'list',
+    // Login pelo Swagger: o token da resposta é aplicado sozinho em "Authorize"
+    responseInterceptor: (res) => {
+      try {
+        if (/\/auth\/login$/.test(new URL(res.url).pathname) && res.ok && res.body?.token) {
+          ui.authActions.authorize({
+            bearerAuth: { name: 'bearerAuth', schema: { type: 'http', scheme: 'bearer' }, value: res.body.token },
+          });
+        }
+      } catch { /* ignora */ }
+      return res;
+    },
+  });
+</script>
+</body>
+</html>

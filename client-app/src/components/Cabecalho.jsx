@@ -73,7 +73,7 @@ export default function Cabecalho({ s, pendentes, aoReautenticar, aoVerSincroniz
               {pendentes > 0 && <span className="contador">{pendentes}</span>}
             </button>
           )}
-          <button className="discreto" onClick={pedirSaida} title="Sair" aria-label="Sair"><Icone nome="sair" /></button>
+          <button className="discreto sair" onClick={pedirSaida} title="Sair" aria-label="Sair"><Icone nome="sair" /></button>
         </div>
       </div>
 

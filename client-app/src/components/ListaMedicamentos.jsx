@@ -8,13 +8,13 @@ export default function ListaMedicamentos() {
     <section className="painel">
       <h2>Medicamentos disponíveis no aparelho <small>({meds.length})</small></h2>
       <div className="tabela-rolagem">
-        <table>
+        <table className="tabela-cartoes">
           <thead><tr><th>Nome</th><th>Princípio ativo</th><th>Apresentação</th><th>Via</th><th>Dose máx.</th><th>Atualizado no servidor</th></tr></thead>
           <tbody>
             {meds.map((m) => (
               <tr key={m.id}>
-                <td>{m.nome}</td><td>{m.principioAtivo ?? '—'}</td><td>{m.apresentacao ?? '—'}</td>
-                <td>{m.viaPadrao ?? '—'}</td><td>{m.doseMaxima ?? '—'} {m.unidade}</td><td>{formatarDataHora(m.atualizadoEm)}</td>
+                <td className="destaque">{m.nome}</td><td data-label="Princípio ativo">{m.principioAtivo ?? '—'}</td><td data-label="Apresentação">{m.apresentacao ?? '—'}</td>
+                <td data-label="Via">{m.viaPadrao ?? '—'}</td><td data-label="Dose máx.">{m.doseMaxima ?? '—'} {m.unidade}</td><td data-label="Atualizado">{formatarDataHora(m.atualizadoEm)}</td>
               </tr>
             ))}
             {!meds.length && <tr><td colSpan="6" className="vazio">Nenhum medicamento no aparelho. Use “Receber dados” com conexão.</td></tr>}

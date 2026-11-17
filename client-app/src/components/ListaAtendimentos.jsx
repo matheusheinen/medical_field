@@ -42,23 +42,23 @@ export default function ListaAtendimentos() {
       <h2>Atendimentos no dispositivo <small>({dados.length})</small></h2>
       {aviso && <div className={`alerta ${aviso.tipo}`}>{aviso.texto}</div>}
       <div className="tabela-rolagem">
-        <table>
+        <table className="tabela-cartoes">
           <thead>
             <tr><th>Data/hora</th><th>Paciente</th><th>Queixa</th><th>Manchester</th><th>Glasgow</th><th>Ficha</th></tr>
           </thead>
           <tbody>
             {dados.map((a) => (
               <tr key={a.id}>
-                <td>{formatarDataHora(a.dataHora)}</td>
-                <td>{a.pessoa?.nome ?? '—'}</td>
-                <td>{a.queixaPrincipal ?? '—'}</td>
-                <td>{a.triagemManchester ? <span className={`tri ${a.triagemManchester.toLowerCase()}`}>{a.triagemManchester}</span> : '—'}</td>
-                <td>{a.glasgowTotal ?? '—'}</td>
+                <td data-label="Data/hora">{formatarDataHora(a.dataHora)}</td>
+                <td className="destaque">{a.pessoa?.nome ?? '—'}</td>
+                <td data-label="Queixa">{a.queixaPrincipal ?? '—'}</td>
+                <td data-label="Manchester">{a.triagemManchester ? <span className={`tri ${a.triagemManchester.toLowerCase()}`}>{a.triagemManchester}</span> : '—'}</td>
+                <td data-label="Glasgow">{a.glasgowTotal ?? '—'}</td>
                 <td className="acoes">
                   <button disabled={!podeDocumento(a) || ocupado === a.id} onClick={() => pdf(a)}
                           title={podeDocumento(a) ? 'Gerar PDF' : 'Disponível após sincronizar e com conexão'}>PDF</button>
                   <button disabled={!podeDocumento(a) || ocupado === a.id}
-                          onClick={() => setEmail({ atendimento: a, destinatario: a.pessoa?.contatoEmergenciaEmail || a.pessoa?.email || '', mensagem: '' })}>
+                          onClick={() => setEmail({ atendimento: a, destinatario: a.pessoa?.email || a.pessoa?.contatoEmergenciaEmail || '', mensagem: '' })}>
                     E-mail
                   </button>
                 </td>

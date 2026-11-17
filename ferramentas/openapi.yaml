@@ -1,0 +1,614 @@
+openapi: 3.0.3
+info:
+  title: MedicalField API
+  version: "1.0"
+  description: |
+    Prontuário de emergência offline-first. Todas as rotas passam pelo gateway (`/api`)
+    e, exceto o login, exigem `Authorization: Bearer <token>`.
+
+    **Como testar:** abra `POST /auth/login`, clique em *Try it out* e *Execute*.
+    O token da resposta é aplicado sozinho em **Authorize** e vale para todas as outras rotas.
+
+    | Perfil | tipoRegistro | registro | senha |
+    |---|---|---|---|
+    | Administrador (portal) | ADM | admin | senha123 |
+    | Médico (app) | CRM | 12345 | senha123 |
+    | Enfermagem (app) | COREN | 54321 | senha123 |
+    | Socorrista (app) | SOC | SOC-0001 | senha123 |
+
+    Referência completa: `docs/02_API.md`.
+servers:
+  - url: http://localhost:5173/api
+    description: Desenvolvimento local (proxy do Vite do client-app)
+  - url: http://{ipVm}/api
+    description: VM Ubuntu (Nginx)
+    variables:
+      ipVm:
+        default: IP-DA-VM
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Autenticação
+    description: auth-service (Node.js)
+  - name: Profissionais
+    description: auth-service (Node.js), somente ADMIN
+  - name: Medicamentos
+    description: clinical-service (Java)
+  - name: Pessoas
+    description: clinical-service (Java)
+  - name: Prontuários
+    description: clinical-service (Java)
+  - name: Atendimentos
+    description: clinical-service (Java)
+  - name: Sincronização
+    description: clinical-service (Java), usado pela Outbox do app
+  - name: Documentos
+    description: document-service (Python)
+  - name: Logs e auditoria
+    description: clinical-service (Java)
+
+paths:
+  /auth/login:
+    post:
+      tags: [Autenticação]
+      summary: Autentica o profissional e retorna o token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Login' }
+            examples:
+              medico: { summary: Médico (CRM 12345), value: { tipoRegistro: CRM, registro: "12345", senha: senha123 } }
+              admin: { summary: Administrador (ADM admin), value: { tipoRegistro: ADM, registro: admin, senha: senha123 } }
+      responses:
+        "200":
+          description: Token emitido (válido por 12 h)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResposta' }
+        "400": { $ref: '#/components/responses/Validacao' }
+        "401": { description: Credenciais inválidas }
+
+  /auth/me:
+    get:
+      tags: [Autenticação]
+      summary: Dados do token atual
+      responses:
+        "200": { description: Payload do token (sub, nome, tipo, registro, perfil, iat, exp) }
+        "401": { $ref: '#/components/responses/SemToken' }
+
+  /auth/profissional:
+    get:
+      tags: [Profissionais]
+      summary: Lista profissionais (ativos e inativos)
+      responses:
+        "200": { description: Lista de profissionais }
+        "401": { $ref: '#/components/responses/SemToken' }
+        "403": { $ref: '#/components/responses/SemPerfil' }
+    post:
+      tags: [Profissionais]
+      summary: Cadastra profissional
+      description: O perfil vem do tipo (`ADM` → ADMIN; `CRM`, `COREN`, `SOC` → SOCORRISTA).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProfissionalNovo' }
+      responses:
+        "201": { description: Profissional criado }
+        "400": { $ref: '#/components/responses/Validacao' }
+        "403": { $ref: '#/components/responses/SemPerfil' }
+        "409": { description: Tipo + registro já cadastrados }
+
+  /auth/profissional/{id}:
+    put:
+      tags: [Profissionais]
+      summary: Altera dados, redefine senha, inativa ou reativa
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProfissionalAlteracao' }
+      responses:
+        "200": { description: Profissional alterado }
+        "400": { $ref: '#/components/responses/Validacao' }
+        "403": { $ref: '#/components/responses/SemPerfil' }
+
+  /medicamento:
+    get:
+      tags: [Medicamentos]
+      summary: Lista medicamentos ativos
+      parameters:
+        - name: todos
+          in: query
+          description: Inclui os inativos (somente ADMIN)
+          schema: { type: boolean }
+      responses:
+        "200": { description: Lista de medicamentos }
+        "401": { $ref: '#/components/responses/SemToken' }
+    post:
+      tags: [Medicamentos]
+      summary: Cadastra medicamento (ADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Medicamento' }
+      responses:
+        "201": { description: Medicamento criado }
+        "400": { $ref: '#/components/responses/Validacao' }
+        "403": { $ref: '#/components/responses/SemPerfil' }
+
+  /medicamento/{id}:
+    put:
+      tags: [Medicamentos]
+      summary: Altera, inativa ou reativa medicamento (ADMIN)
+      description: Recebe o registro completo; `ativo false` inativa (nada é apagado).
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Medicamento' }
+      responses:
+        "200": { description: Medicamento alterado }
+        "400": { $ref: '#/components/responses/Validacao' }
+        "403": { $ref: '#/components/responses/SemPerfil' }
+
+  /pessoa:
+    get:
+      tags: [Pessoas]
+      summary: Lista pessoas (com total de atendimentos)
+      responses:
+        "200": { description: Lista de pessoas }
+        "401": { $ref: '#/components/responses/SemToken' }
+    post:
+      tags: [Pessoas]
+      summary: Cadastra ou atualiza pessoa (idempotente)
+      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Pessoa' }
+      responses:
+        "201": { description: CRIADO, content: { application/json: { schema: { $ref: '#/components/schemas/ResultadoGravacao' } } } }
+        "200": { description: ATUALIZADO, SEM_ALTERACAO, DUPLICADO, CONFLITO_RESOLVIDO ou VINCULADO, content: { application/json: { schema: { $ref: '#/components/schemas/ResultadoGravacao' } } } }
+        "400": { $ref: '#/components/responses/Validacao' }
+        "409": { description: Violação de integridade (ex. CPF de outra pessoa) }
+
+  /pessoa/{id}:
+    get:
+      tags: [Pessoas]
+      summary: Uma pessoa
+      parameters: [ { $ref: '#/components/parameters/PessoaId' } ]
+      responses:
+        "200": { description: Pessoa }
+        "404": { description: Não encontrada }
+
+  /prontuario:
+    get:
+      tags: [Prontuários]
+      summary: Prontuários de todas as pessoas
+      responses:
+        "200": { description: Lista de prontuários }
+    post:
+      tags: [Prontuários]
+      summary: Cadastra ou atualiza prontuário (idempotente)
+      description: Um prontuário por pessoa. Conflitos usam a estratégia MERGE (nenhuma alergia se perde).
+      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Prontuario' }
+      responses:
+        "201": { description: CRIADO, content: { application/json: { schema: { $ref: '#/components/schemas/ResultadoGravacao' } } } }
+        "200": { description: Demais status, content: { application/json: { schema: { $ref: '#/components/schemas/ResultadoGravacao' } } } }
+        "400": { $ref: '#/components/responses/Validacao' }
+        "409": { description: Pessoa inexistente }
+
+  /prontuario/{id}:
+    get:
+      tags: [Prontuários]
+      summary: Prontuário de uma pessoa, com os atendimentos
+      description: "`id` pode ser o id da pessoa ou do prontuário."
+      parameters: [ { $ref: '#/components/parameters/PessoaId' } ]
+      responses:
+        "200": { description: Prontuário + pessoaNome, pessoaCpf e atendimentos }
+        "404": { description: Não encontrado }
+
+  /atendimento:
+    get:
+      tags: [Atendimentos]
+      summary: Todos os atendimentos (resumo)
+      responses:
+        "200": { description: Lista de atendimentos }
+    post:
+      tags: [Atendimentos]
+      summary: Cadastra atendimento com medicamentos administrados
+      description: "`profissionalId` é sempre o usuário do token (o valor do corpo é ignorado)."
+      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Atendimento' }
+      responses:
+        "201": { description: CRIADO, content: { application/json: { schema: { $ref: '#/components/schemas/ResultadoGravacao' } } } }
+        "200": { description: Demais status, content: { application/json: { schema: { $ref: '#/components/schemas/ResultadoGravacao' } } } }
+        "400": { $ref: '#/components/responses/Validacao' }
+        "409": { description: Pessoa ou prontuário inexistente }
+
+  /atendimento/{id}:
+    get:
+      tags: [Atendimentos]
+      summary: Atendimentos de uma pessoa
+      parameters: [ { $ref: '#/components/parameters/PessoaId' } ]
+      responses:
+        "200": { description: Lista de atendimentos da pessoa }
+
+  /atendimento/detalhe/{id}:
+    get:
+      tags: [Atendimentos]
+      summary: Ficha completa do atendimento
+      description: Atendimento, pessoa, prontuário, profissional e medicamentos.
+      parameters: [ { $ref: '#/components/parameters/AtendimentoId' } ]
+      responses:
+        "200": { description: Ficha completa }
+        "404": { description: Não encontrado }
+
+  /sync/pull:
+    get:
+      tags: [Sincronização]
+      summary: "Servidor → cliente: tudo que mudou desde `desde`"
+      description: Sem `desde`, devolve tudo (carga inicial). Guarde `servidorAgora` para o próximo pull.
+      parameters:
+        - name: desde
+          in: query
+          schema: { type: string, format: date-time, example: "2000-01-01T00:00:00Z" }
+      responses:
+        "200": { description: servidorAgora, desde, medicamentos, pessoas, prontuarios, atendimentos }
+
+  /sync/push:
+    post:
+      tags: [Sincronização]
+      summary: "Cliente → servidor: lote da Outbox"
+      description: Operações processadas na ordem, cada uma em sua transação. Reenviar o mesmo `opId` responde DUPLICADO.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Push' }
+      responses:
+        "200": { description: "processadas e resultados[] (um por operação, com status)" }
+
+  /log:
+    get:
+      tags: [Logs e auditoria]
+      summary: Logs de acesso de todos os serviços (ADMIN)
+      parameters:
+        - name: limite
+          in: query
+          schema: { type: integer, default: 200, maximum: 2000, example: 20 }
+      responses:
+        "200": { description: Registros de log_acesso, do mais recente ao mais antigo }
+        "403": { $ref: '#/components/responses/SemPerfil' }
+    post:
+      tags: [Logs e auditoria]
+      summary: Recebe os logs gravados no aparelho durante o modo offline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LogsOffline' }
+      responses:
+        "200": { description: "recebidos, gravados, duplicadosIgnorados" }
+
+  /auditoria:
+    get:
+      tags: [Logs e auditoria]
+      summary: Trilha de auditoria (dados antes/depois de cada alteração) (ADMIN)
+      parameters:
+        - name: entidadeId
+          in: query
+          description: Histórico de um registro; vazio traz as últimas alterações de todas as entidades
+          schema: { type: string, format: uuid }
+        - name: limite
+          in: query
+          schema: { type: integer, example: 20 }
+      responses:
+        "200": { description: Registros de auditoria_alteracao }
+        "403": { $ref: '#/components/responses/SemPerfil' }
+
+  /documento/atendimento/{id}/pdf:
+    get:
+      tags: [Documentos]
+      summary: Gera a Ficha de Atendimento em PDF
+      parameters: [ { $ref: '#/components/parameters/AtendimentoId' } ]
+      responses:
+        "200":
+          description: PDF da ficha
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        "404": { description: Atendimento ainda não chegou ao servidor }
+
+  /documento/atendimento/{id}/email:
+    post:
+      tags: [Documentos]
+      summary: Gera o PDF e envia por e-mail como anexo
+      description: Sem `destinatario`, usa o e-mail do paciente e, na falta dele, o do contato de emergência.
+      parameters: [ { $ref: '#/components/parameters/AtendimentoId' } ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                destinatario: { type: string, format: email }
+                mensagem: { type: string, example: Texto opcional }
+      responses:
+        "200":
+          description: Enviado (via SMTP ou gravado como .eml quando não há SMTP)
+          content:
+            application/json:
+              example: { enviado: true, destinatario: familiar@example.com, anexo: ficha-atendimento-bbbbbbbb.pdf, tamanhoBytes: 4953, via: SMTP, servidor: "smtp.gmail.com:587" }
+        "400": { description: Nenhum e-mail de destinatário válido }
+        "502": { description: Falha no servidor SMTP }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    PessoaId:
+      name: id
+      in: path
+      required: true
+      description: Id da pessoa (dado de exemplo do seed)
+      schema: { type: string, format: uuid, example: 33333333-3333-3333-3333-333333333333 }
+    AtendimentoId:
+      name: id
+      in: path
+      required: true
+      description: Id do atendimento (dado de exemplo do seed)
+      schema: { type: string, format: uuid, example: bbbbbbbb-0000-0000-0000-000000000006 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      description: opId da operação; reenviar o mesmo valor não duplica o registro
+      schema: { type: string, format: uuid }
+
+  responses:
+    SemToken: { description: Token ausente, inválido ou expirado }
+    SemPerfil: { description: Rota exclusiva do perfil ADMIN }
+    Validacao: { description: Campos obrigatórios ausentes ou inválidos }
+
+  schemas:
+    Login:
+      type: object
+      required: [tipoRegistro, registro, senha]
+      properties:
+        tipoRegistro: { type: string, enum: [CRM, COREN, SOC, ADM], example: CRM }
+        registro: { type: string, example: "12345" }
+        senha: { type: string, example: senha123 }
+
+    LoginResposta:
+      type: object
+      properties:
+        token: { type: string }
+        expiraEm: { type: string, format: date-time }
+        profissional:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            nome: { type: string, example: Dra. Ana Souza }
+            tipoRegistro: { type: string, example: CRM }
+            registro: { type: string, example: "12345" }
+            uf: { type: string, example: RS }
+            perfil: { type: string, enum: [ADMIN, SOCORRISTA] }
+
+    ProfissionalNovo:
+      type: object
+      required: [nome, tipoRegistro, registro, senha]
+      properties:
+        nome: { type: string, example: Enf. Juliana Prates }
+        tipoRegistro: { type: string, enum: [CRM, COREN, SOC, ADM], example: COREN }
+        registro: { type: string, example: "61904" }
+        uf: { type: string, example: RS }
+        email: { type: string, format: email, example: juliana@example.com }
+        senha: { type: string, minLength: 8, example: senha-forte-123 }
+
+    ProfissionalAlteracao:
+      type: object
+      description: tipoRegistro e registro não mudam.
+      properties:
+        nome: { type: string }
+        uf: { type: string }
+        email: { type: string, format: email }
+        ativo: { type: boolean }
+        senha: { type: string, description: Opcional, redefine a senha }
+
+    Medicamento:
+      type: object
+      required: [nome]
+      properties:
+        nome: { type: string, example: Cetamina }
+        principioAtivo: { type: string, example: Cloridrato de cetamina }
+        apresentacao: { type: string, example: Frasco 50 mg/mL }
+        viaPadrao: { type: string, example: IV }
+        doseMaxima: { type: number, description: "> 0, exige unidade", example: 100 }
+        unidade: { type: string, example: mg }
+        ativo: { type: boolean, example: true }
+
+    Controle:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string, format: uuid, description: Gerado pelo cliente }
+        versao: { type: integer, description: "Versão-base conhecida pelo cliente (0 = novo)", example: 0 }
+        atualizadoEm: { type: string, format: date-time }
+        criadoOffline: { type: boolean }
+
+    Pessoa:
+      allOf:
+        - $ref: '#/components/schemas/Controle'
+        - type: object
+          required: [nome]
+          properties:
+            nome: { type: string, example: Maria Souza }
+            cpf: { type: string, example: 111.222.333-44 }
+            dataNascimento: { type: string, format: date, example: "1990-03-15" }
+            sexo: { type: string, enum: [M, F, O], example: F }
+            telefone: { type: string, example: (51) 99999-0000 }
+            email: { type: string, format: email, example: maria@example.com }
+            contatoEmergenciaNome: { type: string, example: José Souza }
+            contatoEmergenciaEmail: { type: string, format: email, example: jose@example.com }
+      example:
+        id: 44444444-4444-4444-4444-444444444444
+        nome: Maria Souza
+        cpf: 111.222.333-44
+        dataNascimento: "1990-03-15"
+        sexo: F
+        telefone: (51) 99999-0000
+        email: maria@example.com
+        contatoEmergenciaNome: José Souza
+        contatoEmergenciaEmail: jose@example.com
+        versao: 0
+
+    Prontuario:
+      allOf:
+        - $ref: '#/components/schemas/Controle'
+        - type: object
+          required: [pessoaId]
+          properties:
+            pessoaId: { type: string, format: uuid }
+            tipoSanguineo: { type: string, example: B+ }
+            alergias: { type: string, example: Látex, Dipirona }
+            comorbidades: { type: string, example: Asma }
+            medicamentosContinuos: { type: string, example: Salbutamol }
+            observacoes: { type: string, nullable: true }
+      example:
+        id: aaaaaaaa-4444-4444-4444-444444444444
+        pessoaId: 44444444-4444-4444-4444-444444444444
+        tipoSanguineo: B+
+        alergias: Látex, Dipirona
+        comorbidades: Asma
+        medicamentosContinuos: Salbutamol
+        versao: 0
+
+    Atendimento:
+      allOf:
+        - $ref: '#/components/schemas/Controle'
+        - type: object
+          required: [prontuarioId, pessoaId, dataHora]
+          properties:
+            prontuarioId: { type: string, format: uuid }
+            pessoaId: { type: string, format: uuid }
+            dataHora: { type: string, format: date-time }
+            localOcorrencia: { type: string }
+            queixaPrincipal: { type: string }
+            paSistolica: { type: integer }
+            paDiastolica: { type: integer }
+            freqCardiaca: { type: integer }
+            freqRespiratoria: { type: integer }
+            saturacaoO2: { type: integer }
+            temperatura: { type: number }
+            glicemia: { type: integer }
+            glasgowOcular: { type: integer, minimum: 1, maximum: 4 }
+            glasgowVerbal: { type: integer, minimum: 1, maximum: 5 }
+            glasgowMotora: { type: integer, minimum: 1, maximum: 6 }
+            glasgowTotal: { type: integer, minimum: 3, maximum: 15 }
+            triagemManchester: { type: string, enum: [VERMELHO, LARANJA, AMARELO, VERDE, AZUL] }
+            triagemStart: { type: string, enum: [VERMELHO, AMARELO, VERDE, PRETO] }
+            procedimentos: { type: string }
+            observacoes: { type: string, nullable: true }
+            destino: { type: string }
+            medicamentos:
+              type: array
+              items:
+                type: object
+                properties:
+                  medicamentoId: { type: string, format: uuid, description: Id de GET /medicamento }
+                  dose: { type: number }
+                  unidade: { type: string }
+                  via: { type: string }
+                  horario: { type: string, format: date-time }
+      example:
+        id: bbbbbbbb-4444-4444-4444-444444444444
+        prontuarioId: aaaaaaaa-4444-4444-4444-444444444444
+        pessoaId: 44444444-4444-4444-4444-444444444444
+        dataHora: "2026-11-10T14:30:00.000Z"
+        localOcorrencia: BR-386, km 350
+        queixaPrincipal: Queda de moto
+        paSistolica: 120
+        paDiastolica: 80
+        freqCardiaca: 98
+        freqRespiratoria: 18
+        saturacaoO2: 96
+        temperatura: 36.5
+        glicemia: 110
+        glasgowOcular: 3
+        glasgowVerbal: 4
+        glasgowMotora: 6
+        glasgowTotal: 13
+        triagemManchester: AMARELO
+        triagemStart: VERDE
+        procedimentos: Imobilização
+        destino: HSC
+        medicamentos: []
+        versao: 0
+
+    ResultadoGravacao:
+      type: object
+      properties:
+        opId: { type: string }
+        entidade: { type: string, enum: [pessoa, prontuario, atendimento] }
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [CRIADO, ATUALIZADO, SEM_ALTERACAO, DUPLICADO, CONFLITO_RESOLVIDO, VINCULADO] }
+        estrategia: { type: string, nullable: true, enum: [LWW, SERVER_WINS, MERGE] }
+        idOrigem: { type: string, description: Só no VINCULADO, o id enviado }
+        registro: { type: object, description: Registro final no servidor }
+
+    Push:
+      type: object
+      required: [dispositivoId, operacoes]
+      properties:
+        dispositivoId: { type: string, example: disp-swagger }
+        operacoes:
+          type: array
+          items:
+            type: object
+            required: [opId, entidade, dados]
+            properties:
+              opId: { type: string, format: uuid }
+              entidade: { type: string, enum: [pessoa, prontuario, atendimento] }
+              dados: { type: object }
+
+    LogsOffline:
+      type: object
+      properties:
+        dispositivoId: { type: string, example: disp-swagger }
+        logs:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              dataHora: { type: string, format: date-time }
+              metodo: { type: string, example: POST }
+              rota: { type: string, example: /atendimento (offline) }
+              statusCode: { type: integer, example: 201 }
+              tempoMs: { type: number, example: 3.2 }

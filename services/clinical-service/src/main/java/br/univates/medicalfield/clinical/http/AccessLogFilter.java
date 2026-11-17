@@ -29,7 +29,7 @@ public final class AccessLogFilter extends Filter {
         } finally {
             double ms = (System.nanoTime() - inicio) / 1_000_000.0;
             int status = ex.getResponseCode();
-            Usuario u = (Usuario) ex.getAttribute(AuthFilter.ATRIBUTO_USUARIO);
+            Usuario u = AuthFilter.liberar(ex);
             String ip = ip(ex);
             String rota = ex.getRequestURI().toString();
             String metodo = ex.getRequestMethod();

@@ -42,6 +42,7 @@ Erros seguem sempre o formato `{"erro": "mensagem"}` com o status HTTP adequado 
 | POST | `/documento/atendimento/{id}/email` | document (Python) | Sim | Gera o PDF e envia por e-mail como anexo |
 
 > O Swagger automático do FastAPI (`/docs`, `/openapi.json`) está **desativado**: ele responderia sem token e quebraria a regra "todas as rotas, exceto o login, exigem autenticação".
+> No lugar dele há uma especificação OpenAPI única das três APIs, [`ferramentas/openapi.yaml`](../ferramentas/openapi.yaml), com Swagger UI: `python -m http.server 5500 --directory ferramentas` e abrir `http://localhost:5500/`. É só documentação: fica fora do app, do portal e da VM, e as rotas continuam exigindo token.
 
 Portas internas (sem o gateway): auth `3001`, clinical `8080`, document `8000`. No acesso direto, remova o prefixo `/api`.
 

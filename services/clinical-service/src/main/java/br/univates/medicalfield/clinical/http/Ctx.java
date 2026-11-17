@@ -30,7 +30,7 @@ public final class Ctx {
         }
     }
 
-    public Usuario usuario() { return (Usuario) ex.getAttribute(AuthFilter.ATRIBUTO_USUARIO); }
+    public Usuario usuario() { return AuthFilter.usuario(ex); }
 
     public String param(String nome) { return params.get(nome); }
 
