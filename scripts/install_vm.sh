@@ -68,7 +68,9 @@ if [ "$RESET_DB" = true ] || [ "$TEM_TABELAS" != "t" ]; then
   PGPASSWORD=$DB_PASSWORD psql -q -h localhost -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -f "$DESTINO/database/02_seed.sql"
   echo "Banco criado com os dados iniciais."
 else
-  echo "Banco já existe (use --reset-db para recriar)."
+  # Banco criado por uma versão anterior: acrescenta colunas/tabelas novas, sem apagar dados
+  PGPASSWORD=$DB_PASSWORD psql -q -h localhost -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -f "$DESTINO/database/04_atualizar_estrutura.sql"
+  echo "Banco já existe: estrutura atualizada, dados mantidos (use --reset-db para recriar)."
 fi
 
 passo "4/8 auth-service (Node.js/TypeScript)"

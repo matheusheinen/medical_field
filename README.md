@@ -4,7 +4,7 @@
 
 A equipe registra paciente, sinais vitais, Glasgow, Manchester e medicamentos **com ou sem internet**. Os registros ficam no aparelho e sobem para o servidor central quando a conexão volta, sem duplicar e sem perder alterações concorrentes. A central acompanha tudo pelo portal, gera a ficha em **PDF** e a envia por **e-mail** ao paciente ou familiar.
 
-![Arquitetura](docs/arquitetura.svg)
+![Arquitetura](docs/arquitetura_software_medicalfield.png)
 
 ## Componentes
 

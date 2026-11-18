@@ -4,6 +4,10 @@ O sistema tem **dois bancos**: o **central** (PostgreSQL, na VM) e o **local** (
 
 ## 3.1 Banco central — PostgreSQL
 
+![Modelo físico do banco central](modelo_er_medicalfield.png)
+
+O mesmo modelo em Mermaid (texto, versionável):
+
 ```mermaid
 erDiagram
     PROFISSIONAL ||--o{ ATENDIMENTO : "registra"
@@ -150,4 +154,4 @@ Ao **sair**, todas as stores são apagadas. Por isso a saída fica bloqueada enq
 
 ## 3.3 Dados iniciais
 
-`database/02_seed.sql`: 7 profissionais (um inativo), 11 medicamentos, 6 pessoas com prontuário e 6 atendimentos. Os acessos estão no [README](../README.md). O script `database/03_novos_medicamentos.sql` (passo 9 do roteiro) adiciona Morfina, Naloxona e Hidrocortisona.
+`database/02_seed.sql`: 7 profissionais (um inativo), 11 medicamentos, 6 pessoas com prontuário e 6 atendimentos. Os acessos estão no [README](../README.md). O script `database/03_novos_medicamentos.sql` (passo 9 do roteiro) adiciona Morfina, Naloxona e Hidrocortisona. O `database/04_atualizar_estrutura.sql` atualiza um banco criado por uma versão anterior sem apagar dados; o `install_vm.sh` o executa em toda atualização.

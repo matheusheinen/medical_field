@@ -6,9 +6,9 @@ Como cada exigência do enunciado (*Trabalho Final – MedicalField*, Arquitetur
 
 | # | Entrega | Onde |
 |---|---|---|
-| 1 | Modelo de arquitetura e tecnologias | [01_ARQUITETURA.md](01_ARQUITETURA.md) · [arquitetura.svg](arquitetura.svg) |
+| 1 | Modelo de arquitetura e tecnologias | [01_ARQUITETURA.md](01_ARQUITETURA.md) · [diagrama](arquitetura_software_medicalfield.png) |
 | 2 | APIs e endpoints | [02_API.md](02_API.md) · [Swagger / OpenAPI](../ferramentas/openapi.yaml) · [Postman](../postman/) |
-| 2 | Modelagem dos bancos | [03_BANCO_DE_DADOS.md](03_BANCO_DE_DADOS.md) · [01_schema.sql](../database/01_schema.sql) |
+| 2 | Modelagem dos bancos | [03_BANCO_DE_DADOS.md](03_BANCO_DE_DADOS.md) · [modelo ER](modelo_er_medicalfield.png) · [01_schema.sql](../database/01_schema.sql) |
 | 3 | Roteiro de testes | Os 17 passos rodam pelo portal e pelo app; automatizados em `client-app/tests/e2e.mjs` |
 
 ## 0.2 Requisitos gerais e técnicos

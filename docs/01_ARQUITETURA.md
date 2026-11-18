@@ -1,6 +1,6 @@
 # 1. Modelo de Arquitetura
 
-![Arquitetura](arquitetura.svg)
+![Arquitetura](arquitetura_software_medicalfield.png)
 
 Duas ideias centrais:
 
