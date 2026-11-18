@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/documento/atendimento/{{atendimentoId}}/email"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "destinatario": "familiar@example.com",
+      "mensagem": "Segue a ficha do atendimento."
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{token}}"
+scripts:
+  - type: afterResponse
+    code: pm.test('status 200', () => pm.response.to.have.status(200));
+    language: text/javascript
+order: 2000

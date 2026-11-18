@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{baseUrl}}/auth/profissional"
+method: POST
+headers:
+  Authorization: Bearer {{tokenAdmin}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "nome": "Enf. Teste Postman",
+      "tipoRegistro": "COREN",
+      "registro": "{{$timestamp}}",
+      "uf": "RS",
+      "email": "teste.postman@example.com",
+      "senha": "senhaForte1"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('201', () => pm.response.to.have.status(201));
+      pm.collectionVariables.set('novoProfissionalId', pm.response.json().id);
+    language: text/javascript
+order: 6000

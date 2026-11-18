@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/medicamento?todos=true"
+method: GET
+headers:
+  Authorization: Bearer {{tokenAdmin}}
+  Content-Type: application/json
+queryParams:
+  todos: "true"
+scripts:
+  - type: afterResponse
+    code: pm.test('inclui inativos', () => pm.expect(pm.response.json().some(m => !m.ativo)).to.be.true);
+    language: text/javascript
+order: 5000

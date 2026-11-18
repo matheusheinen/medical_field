@@ -1,0 +1,4 @@
+name: MedicalField - VM
+values:
+  - key: baseUrl
+    value: ''

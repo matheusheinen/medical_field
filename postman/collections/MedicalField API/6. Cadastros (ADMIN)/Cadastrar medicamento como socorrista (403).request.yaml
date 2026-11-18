@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/medicamento"
+method: POST
+headers:
+  Authorization: Bearer {{token}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "nome": "X"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('403', () => pm.response.to.have.status(403));
+    language: text/javascript
+order: 3000

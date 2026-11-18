@@ -1,6 +1,7 @@
 package br.univates.medicalfield.clinical.service;
 
 import br.univates.medicalfield.clinical.data.*;
+import br.univates.medicalfield.clinical.http.ApiException;
 import br.univates.medicalfield.clinical.sync.ConflictStrategy;
 import br.univates.medicalfield.clinical.sync.ConflictStrategyFactory;
 
@@ -44,6 +45,7 @@ public final class UpsertService {
     public Map<String, Object> executar(Connection c, EntityDef def, Map<String, Object> bruto, Contexto ctx)
             throws SQLException {
         Map<String, Object> cliente = def.normalizar(bruto);
+        if (def == Entities.PESSOA) cliente.put("cpf", formatarCpf(cliente.get("cpf")));
         UUID idOrigem = (UUID) cliente.get("id");
         resolverVinculos(c, def, cliente);   // ids de cadastros que já foram vinculados a outro registro
         UUID id = (UUID) cliente.get("id");
@@ -196,5 +198,19 @@ public final class UpsertService {
         r.put("estrategia", estrategia);
         r.put("registro", registro);
         return r;
+    }
+
+    /**
+     * CPF sempre gravado no mesmo formato (000.000.000-00), venha com ou sem máscara.
+     * Diferente de 11 dígitos é recusado com mensagem clara, em vez de estourar a coluna do banco.
+     */
+    static String formatarCpf(Object valor) {
+        if (valor == null) return null;
+        String d = valor.toString().replaceAll("\\D", "");
+        if (d.isEmpty()) return null;
+        if (d.length() != 11) {
+            throw new ApiException(400, "CPF inválido: informe os 11 dígitos (recebido: " + valor + ")");
+        }
+        return d.substring(0, 3) + "." + d.substring(3, 6) + "." + d.substring(6, 9) + "-" + d.substring(9);
     }
 }

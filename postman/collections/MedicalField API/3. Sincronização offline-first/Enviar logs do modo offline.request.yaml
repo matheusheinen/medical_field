@@ -1,0 +1,30 @@
+$kind: http-request
+url: "{{baseUrl}}/log"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "dispositivoId": "postman",
+      "logs": [
+        {
+          "id": "{{$guid}}",
+          "dataHora": "2026-11-10T14:31:00.000Z",
+          "metodo": "POST",
+          "rota": "/atendimento (offline)",
+          "statusCode": 201,
+          "tempoMs": 4.1
+        }
+      ]
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{token}}"
+scripts:
+  - type: afterResponse
+    code: pm.test('status 200', () => pm.response.to.have.status(200));
+    language: text/javascript
+order: 3000

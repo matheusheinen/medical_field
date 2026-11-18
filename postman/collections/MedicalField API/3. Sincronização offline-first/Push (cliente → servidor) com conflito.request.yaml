@@ -1,0 +1,36 @@
+$kind: http-request
+description: "versao=0 com o servidor na versão 1 => conflito. Prontuário usa a Strategy MERGE: alergias são unidas."
+url: "{{baseUrl}}/sync/push"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "dispositivoId": "postman",
+      "operacoes": [
+        {
+          "opId": "{{$guid}}",
+          "entidade": "prontuario",
+          "dados": {
+            "id": "{{prontuarioId}}",
+            "pessoaId": "{{pessoaId}}",
+            "tipoSanguineo": "AB+",
+            "alergias": "Látex",
+            "comorbidades": "Diabetes tipo 2",
+            "versao": 0,
+            "atualizadoEm": "2026-11-10T15:00:00.000Z"
+          }
+        }
+      ]
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{token}}"
+scripts:
+  - type: afterResponse
+    code: pm.test('conflito resolvido por MERGE', () => { const r = pm.response.json().resultados[0]; pm.expect(r.status).to.eql('CONFLITO_RESOLVIDO'); pm.expect(r.registro.alergias).to.include('Dipirona'); pm.expect(r.registro.alergias).to.include('Látex'); });
+    language: text/javascript
+order: 2000

@@ -1,0 +1,13 @@
+$kind: http-request
+description: No Postman use 'Send and Download' para salvar o arquivo.
+url: "{{baseUrl}}/documento/atendimento/{{atendimentoId}}/pdf"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{token}}"
+scripts:
+  - type: afterResponse
+    code: pm.test('PDF', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf'));
+    language: text/javascript
+order: 1000

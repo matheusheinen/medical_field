@@ -80,6 +80,7 @@ public final class Router implements HttpHandler {
         if (estado.equals("23505")) return "Já existe um registro com esses dados (ex.: CPF duplicado)";
         if (estado.equals("23503")) return "Registro relacionado não encontrado no servidor";
         if (estado.startsWith("23")) return "Dados violam uma regra de integridade";
+        if (estado.equals("22001")) return "Um dos campos excede o tamanho máximo permitido";
         return "Erro no banco de dados";
     }
 

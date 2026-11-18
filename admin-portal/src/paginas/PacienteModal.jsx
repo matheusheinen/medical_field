@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, fmt, novoUuid } from '../api';
 import Icone from '../ui/Icone';
 import { Alerta, Campo, Modal } from '../ui/componentes';
+import { cpfCompleto, mascararCpf } from '../ui/cpf';
 import TabelaAtendimentos from '../ui/TabelaAtendimentos';
 import FichaAtendimento from './FichaAtendimento';
 
@@ -74,6 +75,7 @@ export default function PacienteModal({ pessoaId: idInicial, abaInicial = 'dados
 
   async function salvarPessoa(e) {
     e.preventDefault();
+    if (!cpfCompleto(formPessoa.cpf)) { setMsg({ tipo: 'erro', texto: 'CPF incompleto: informe os 11 dígitos ou deixe o campo vazio.' }); return; }
     setSalvando(true); setMsg(null);
     try {
       const id = pessoaId ?? novoUuid();
@@ -133,7 +135,7 @@ export default function PacienteModal({ pessoaId: idInicial, abaInicial = 'dados
         {!carregando && aba === 'dados' && (
           <form id="form-pessoa" className="formulario" onSubmit={salvarPessoa}>
             <Campo rotulo="Nome completo" obrigatorio largo><input name="nome" value={formPessoa.nome} onChange={ap} required maxLength={120} /></Campo>
-            <Campo rotulo="CPF"><input name="cpf" value={formPessoa.cpf} onChange={ap} placeholder="000.000.000-00" maxLength={14} /></Campo>
+            <Campo rotulo="CPF"><input name="cpf" value={formPessoa.cpf} onChange={(e) => setFormPessoa((f) => ({ ...f, cpf: mascararCpf(e.target.value) }))} placeholder="000.000.000-00" inputMode="numeric" maxLength={14} /></Campo>
             <Campo rotulo="Data de nascimento"><input type="date" name="dataNascimento" value={formPessoa.dataNascimento} onChange={ap} /></Campo>
             <Campo rotulo="Sexo">
               <select name="sexo" value={formPessoa.sexo} onChange={ap}>

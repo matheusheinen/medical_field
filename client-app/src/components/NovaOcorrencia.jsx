@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { LocalRepository as local } from '../repositories/LocalRepository';
 import { registrarOcorrencia } from '../services/AtendimentoService';
 import { useConectividade } from '../hooks';
+import { cpfCompleto, mascararCpf } from '../util/cpf';
 
 const GLASGOW = {
   glasgowOcular: ['Ausente', 'À dor', 'À voz', 'Espontânea'],
@@ -92,6 +93,7 @@ export default function NovaOcorrencia({ profissional, aoConcluir }) {
   async function salvar(e) {
     e.preventDefault();
     setErro(null);
+    if (!cpfCompleto(pessoa.cpf)) { setErro('CPF incompleto: informe os 11 dígitos ou deixe o campo vazio.'); return; }
     const alertas = meds.map(doseExcessiva).filter(Boolean);
     if (alertas.length && !window.confirm(
       `ATENÇÃO: dose acima da máxima cadastrada para ${alertas.map((a) => `${a.nome} (máx. ${a.doseMaxima} ${a.unidade})`).join(', ')}.\nConfirmar mesmo assim?`)) return;
@@ -148,18 +150,18 @@ export default function NovaOcorrencia({ profissional, aoConcluir }) {
         )}
         {pessoa.id && <p className="dica">Editando paciente existente.</p>}
         <div className="grade">
-          <Campo rotulo="Nome *" largo><input name="nome" value={pessoa.nome} onChange={alterar(setPessoa)} required /></Campo>
-          <Campo rotulo="CPF"><input name="cpf" value={pessoa.cpf} onChange={alterar(setPessoa)} placeholder="000.000.000-00" /></Campo>
+          <Campo rotulo="Nome *" largo><input name="nome" value={pessoa.nome} onChange={alterar(setPessoa)} required maxLength={120} /></Campo>
+          <Campo rotulo="CPF"><input name="cpf" value={pessoa.cpf} onChange={(e) => setPessoa((o) => ({ ...o, cpf: mascararCpf(e.target.value) }))} placeholder="000.000.000-00" inputMode="numeric" maxLength={14} /></Campo>
           <Campo rotulo="Nascimento"><input type="date" name="dataNascimento" value={pessoa.dataNascimento} onChange={alterar(setPessoa)} /></Campo>
           <Campo rotulo="Sexo">
             <select name="sexo" value={pessoa.sexo} onChange={alterar(setPessoa)}>
               <option value="">—</option><option value="F">Feminino</option><option value="M">Masculino</option><option value="O">Outro</option>
             </select>
           </Campo>
-          <Campo rotulo="Telefone"><input name="telefone" value={pessoa.telefone} onChange={alterar(setPessoa)} /></Campo>
-          <Campo rotulo="E-mail do paciente"><input type="email" name="email" value={pessoa.email} onChange={alterar(setPessoa)} /></Campo>
-          <Campo rotulo="Contato de emergência (familiar)"><input name="contatoEmergenciaNome" value={pessoa.contatoEmergenciaNome} onChange={alterar(setPessoa)} /></Campo>
-          <Campo rotulo="E-mail do familiar"><input type="email" name="contatoEmergenciaEmail" value={pessoa.contatoEmergenciaEmail} onChange={alterar(setPessoa)} /></Campo>
+          <Campo rotulo="Telefone"><input name="telefone" type="tel" value={pessoa.telefone} onChange={alterar(setPessoa)} maxLength={20} /></Campo>
+          <Campo rotulo="E-mail do paciente"><input type="email" name="email" value={pessoa.email} onChange={alterar(setPessoa)} maxLength={120} /></Campo>
+          <Campo rotulo="Contato de emergência (familiar)"><input name="contatoEmergenciaNome" value={pessoa.contatoEmergenciaNome} onChange={alterar(setPessoa)} maxLength={120} /></Campo>
+          <Campo rotulo="E-mail do familiar"><input type="email" name="contatoEmergenciaEmail" value={pessoa.contatoEmergenciaEmail} onChange={alterar(setPessoa)} maxLength={120} /></Campo>
         </div>
       </section>
 
@@ -181,7 +183,7 @@ export default function NovaOcorrencia({ profissional, aoConcluir }) {
         <h2>3. Ocorrência e sinais vitais</h2>
         <div className="grade">
           <Campo rotulo="Data/hora *"><input type="datetime-local" name="dataHora" value={at.dataHora} onChange={alterar(setAt)} required /></Campo>
-          <Campo rotulo="Local" largo><input name="localOcorrencia" value={at.localOcorrencia} onChange={alterar(setAt)} placeholder="Endereço, rodovia, km…" /></Campo>
+          <Campo rotulo="Local" largo><input name="localOcorrencia" value={at.localOcorrencia} onChange={alterar(setAt)} placeholder="Endereço, rodovia, km…" maxLength={200} /></Campo>
           <Campo rotulo="Queixa principal" largo><input name="queixaPrincipal" value={at.queixaPrincipal} onChange={alterar(setAt)} /></Campo>
           <Campo rotulo="PA sistólica (mmHg)"><input type="number" name="paSistolica" value={at.paSistolica} onChange={alterar(setAt)} min="0" max="300" /></Campo>
           <Campo rotulo="PA diastólica (mmHg)"><input type="number" name="paDiastolica" value={at.paDiastolica} onChange={alterar(setAt)} min="0" max="200" /></Campo>
@@ -246,8 +248,8 @@ export default function NovaOcorrencia({ profissional, aoConcluir }) {
                 {medicamentos.map((x) => <option key={x.id} value={x.id}>{x.nome} — {x.apresentacao}</option>)}
               </select>
               <input type="number" step="any" placeholder="Dose" value={m.dose} onChange={(e) => alterarMed(i, 'dose', e.target.value)} />
-              <input placeholder="Unid." value={m.unidade} onChange={(e) => alterarMed(i, 'unidade', e.target.value)} />
-              <input placeholder="Via" value={m.via} onChange={(e) => alterarMed(i, 'via', e.target.value)} />
+              <input placeholder="Unid." value={m.unidade} onChange={(e) => alterarMed(i, 'unidade', e.target.value)} maxLength={10} />
+              <input placeholder="Via" value={m.via} onChange={(e) => alterarMed(i, 'via', e.target.value)} maxLength={30} />
               <input type="datetime-local" value={m.horario} onChange={(e) => alterarMed(i, 'horario', e.target.value)} />
               <button type="button" className="discreto" onClick={() => setMeds((l) => l.filter((_, j) => j !== i))} aria-label="Remover">✕</button>
               {excesso && <div className="aviso-dose">⚠ Dose acima da máxima cadastrada ({excesso.doseMaxima} {excesso.unidade})</div>}
@@ -262,7 +264,7 @@ export default function NovaOcorrencia({ profissional, aoConcluir }) {
         <div className="grade">
           <Campo rotulo="Procedimentos realizados" largo><textarea name="procedimentos" value={at.procedimentos} onChange={alterar(setAt)} rows={2} /></Campo>
           <Campo rotulo="Observações" largo><textarea name="observacoes" value={at.observacoes} onChange={alterar(setAt)} rows={2} /></Campo>
-          <Campo rotulo="Destino / hospital" largo><input name="destino" value={at.destino} onChange={alterar(setAt)} /></Campo>
+          <Campo rotulo="Destino / hospital" largo><input name="destino" value={at.destino} onChange={alterar(setAt)} maxLength={200} /></Campo>
         </div>
       </section>
 

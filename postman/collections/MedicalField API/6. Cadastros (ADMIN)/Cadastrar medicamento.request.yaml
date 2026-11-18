@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{baseUrl}}/medicamento"
+method: POST
+headers:
+  Authorization: Bearer {{tokenAdmin}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "nome": "Cetamina",
+      "principioAtivo": "Cloridrato de cetamina",
+      "apresentacao": "Frasco 50 mg/mL 10 mL",
+      "viaPadrao": "IV",
+      "doseMaxima": 100,
+      "unidade": "mg"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('201', () => pm.response.to.have.status(201));
+      pm.collectionVariables.set('novoMedicamentoId', pm.response.json().id);
+    language: text/javascript
+order: 1000

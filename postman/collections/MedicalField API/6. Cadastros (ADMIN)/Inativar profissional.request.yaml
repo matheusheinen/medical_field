@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{baseUrl}}/auth/profissional/{{novoProfissionalId}}"
+method: PUT
+headers:
+  Authorization: Bearer {{tokenAdmin}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "nome": "Enf. Teste Postman",
+      "uf": "RS",
+      "email": "teste.postman@example.com",
+      "ativo": false
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('inativado', () => pm.expect(pm.response.json().ativo).to.eql(false));
+    language: text/javascript
+order: 7000

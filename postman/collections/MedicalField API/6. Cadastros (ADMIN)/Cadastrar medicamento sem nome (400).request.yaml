@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/medicamento"
+method: POST
+headers:
+  Authorization: Bearer {{tokenAdmin}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "doseMaxima": 5,
+      "unidade": "mg"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('400', () => pm.response.to.have.status(400));
+    language: text/javascript
+order: 2000

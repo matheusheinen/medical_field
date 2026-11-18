@@ -62,9 +62,9 @@ export const LocalRepository = {
 
   /** Paciente já cadastrado no aparelho com o mesmo CPF (só os dígitos importam). */
   async pessoaPorCpf(cpf) {
-    const digitos = String(cpf ?? '').replace(/D/g, '');
+    const digitos = String(cpf ?? '').replace(/\D/g, '');
     if (!digitos) return null;
-    return db.pessoas.filter((p) => String(p.cpf ?? '').replace(/D/g, '') === digitos).first();
+    return db.pessoas.filter((p) => String(p.cpf ?? '').replace(/\D/g, '') === digitos).first();
   },
 
   /**

@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{baseUrl}}/medicamento/{{novoMedicamentoId}}"
+method: PUT
+headers:
+  Authorization: Bearer {{tokenAdmin}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "nome": "Cetamina",
+      "principioAtivo": "Cloridrato de cetamina",
+      "apresentacao": "Frasco 50 mg/mL 10 mL",
+      "viaPadrao": "IV",
+      "doseMaxima": 100,
+      "unidade": "mg",
+      "ativo": false
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('inativado', () => pm.expect(pm.response.json().ativo).to.eql(false));
+    language: text/javascript
+order: 4000
