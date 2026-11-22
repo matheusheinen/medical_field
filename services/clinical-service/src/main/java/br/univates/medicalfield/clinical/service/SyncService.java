@@ -16,10 +16,12 @@ import java.util.*;
  */
 public final class SyncService {
     private final ClinicalRepository repo;
+    private final MedicamentoRepository medicamentos;
     private final UpsertService upsert;
 
-    public SyncService(ClinicalRepository repo, UpsertService upsert) {
+    public SyncService(ClinicalRepository repo, MedicamentoRepository medicamentos, UpsertService upsert) {
         this.repo = repo;
+        this.medicamentos = medicamentos;
         this.upsert = upsert;
     }
 
@@ -30,7 +32,7 @@ public final class SyncService {
             Map<String, Object> r = new LinkedHashMap<>();
             r.put("servidorAgora", EntityDef.dataHora(Jdbc.umOuNulo(c, "SELECT now() AS agora").get("agora")));
             r.put("desde", desde);
-            r.put("medicamentos", repo.medicamentosDesde(c, desde));
+            r.put("medicamentos", medicamentos.alteradosDesde(c, desde));
             for (EntityDef def : List.of(Entities.PESSOA, Entities.PRONTUARIO, Entities.ATENDIMENTO)) {
                 List<Map<String, Object>> registros = new ArrayList<>();
                 for (UUID id : repo.idsAlteradosDesde(c, def, desde)) registros.add(repo.buscar(c, def, id, false));

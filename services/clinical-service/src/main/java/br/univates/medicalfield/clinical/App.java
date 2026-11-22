@@ -39,8 +39,9 @@ public final class App {
         AuditRepository auditoria = new AuditRepository();
         LogRepository logs = new LogRepository();
         UpsertService upsert = new UpsertService(repo, auditoria, new ConflictStrategyFactory());
-        SyncService sync = new SyncService(repo, upsert);
-        MedicamentoService medicamentos = new MedicamentoService(auditoria);
+        MedicamentoRepository medicamentoRepo = new MedicamentoRepository();
+        SyncService sync = new SyncService(repo, medicamentoRepo, upsert);
+        MedicamentoService medicamentos = new MedicamentoService(medicamentoRepo, auditoria);
 
         Router r = new Router();
 

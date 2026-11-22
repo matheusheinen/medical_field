@@ -2,7 +2,7 @@ package br.univates.medicalfield.clinical.service;
 
 import br.univates.medicalfield.clinical.data.AuditRepository;
 import br.univates.medicalfield.clinical.data.Database;
-import br.univates.medicalfield.clinical.data.Jdbc;
+import br.univates.medicalfield.clinical.data.MedicamentoRepository;
 import br.univates.medicalfield.clinical.http.ApiException;
 import br.univates.medicalfield.clinical.security.JwtVerifier.Usuario;
 
@@ -12,7 +12,8 @@ import java.sql.SQLException;
 import java.util.*;
 
 /**
- * Cadastro de medicamentos (feito pelo portal administrativo).
+ * Cadastro de medicamentos (feito pelo portal administrativo). Só regras de negócio:
+ * o SQL fica no MedicamentoRepository (padrão Repository).
  *
  *  - Medicamento nunca é apagado: é INATIVADO (ativo = false), porque atendimentos
  *    antigos continuam apontando para ele.
@@ -22,16 +23,17 @@ import java.util.*;
  */
 public final class MedicamentoService {
     private static final String ORIGEM = "PORTAL";
+    private final MedicamentoRepository repo;
     private final AuditRepository auditoria;
 
-    public MedicamentoService(AuditRepository auditoria) {
+    public MedicamentoService(MedicamentoRepository repo, AuditRepository auditoria) {
+        this.repo = repo;
         this.auditoria = auditoria;
     }
 
     public List<Map<String, Object>> listar(boolean incluirInativos) throws SQLException {
         try (Connection c = Database.get().conexao()) {
-            return Jdbc.consultar(c, "SELECT * FROM medicamento"
-                    + (incluirInativos ? "" : " WHERE ativo") + " ORDER BY nome");
+            return repo.listar(c, incluirInativos);
         }
     }
 
@@ -39,12 +41,8 @@ public final class MedicamentoService {
         Map<String, Object> m = validar(corpo);
         UUID id = UUID.randomUUID();
         return emTransacao(c -> {
-            Jdbc.executar(c, """
-                    INSERT INTO medicamento (id, nome, principio_ativo, apresentacao, via_padrao, dose_maxima, unidade, ativo)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)""",
-                    id, m.get("nome"), m.get("principioAtivo"), m.get("apresentacao"),
-                    m.get("viaPadrao"), m.get("doseMaxima"), m.get("unidade"));
-            Map<String, Object> depois = buscar(c, id);
+            repo.inserir(c, id, m);
+            Map<String, Object> depois = repo.buscar(c, id);
             auditoria.registrar(c, "medicamento", id, "INSERT", ORIGEM, null, usuario.id(), null, null, null, depois);
             return depois;
         });
@@ -54,15 +52,10 @@ public final class MedicamentoService {
         Map<String, Object> m = validar(corpo);
         boolean ativo = !Boolean.FALSE.equals(corpo.get("ativo"));
         return emTransacao(c -> {
-            Map<String, Object> antes = buscar(c, id);
+            Map<String, Object> antes = repo.buscar(c, id);
             if (antes == null) throw new ApiException(404, "Medicamento não encontrado");
-            Jdbc.executar(c, """
-                    UPDATE medicamento SET nome = ?, principio_ativo = ?, apresentacao = ?, via_padrao = ?,
-                           dose_maxima = ?, unidade = ?, ativo = ?, atualizado_em = now()
-                     WHERE id = ?""",
-                    m.get("nome"), m.get("principioAtivo"), m.get("apresentacao"), m.get("viaPadrao"),
-                    m.get("doseMaxima"), m.get("unidade"), ativo, id);
-            Map<String, Object> depois = buscar(c, id);
+            repo.atualizar(c, id, m, ativo);
+            Map<String, Object> depois = repo.buscar(c, id);
             String operacao = Boolean.TRUE.equals(antes.get("ativo")) && !ativo ? "INATIVACAO" : "UPDATE";
             auditoria.registrar(c, "medicamento", id, operacao, ORIGEM, null, usuario.id(), null, null, antes, depois);
             return depois;
@@ -70,10 +63,6 @@ public final class MedicamentoService {
     }
 
     // ------------------------------------------------------------------ internos
-
-    private static Map<String, Object> buscar(Connection c, UUID id) throws SQLException {
-        return Jdbc.umOuNulo(c, "SELECT * FROM medicamento WHERE id = ?", id);
-    }
 
     /** Valida o corpo e devolve os valores já normalizados (texto aparado, dose como número). */
     private static Map<String, Object> validar(Map<String, Object> corpo) {

@@ -175,12 +175,6 @@ public final class ClinicalRepository {
         return ids;
     }
 
-    public List<Map<String, Object>> medicamentosDesde(Connection c, OffsetDateTime desde) throws SQLException {
-        return desde == null
-                ? Jdbc.consultar(c, "SELECT * FROM medicamento ORDER BY nome")
-                : Jdbc.consultar(c, "SELECT * FROM medicamento WHERE atualizado_em > ?::timestamptz - interval '5 seconds' ORDER BY nome", desde);
-    }
-
     // ------------------------------------------------------------------ cadastro duplicado (vínculo)
 
     /** Id do servidor para um id gerado no dispositivo: o próprio id, ou o registro ao qual ele foi vinculado. */
