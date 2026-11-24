@@ -1,44 +1,52 @@
 /**
- * Padrão OBSERVER (Subject) + Singleton.
+ * Padrão OBSERVER (Sujeito) + Singleton.
  *
- * O estado "online" do app = rede real do navegador (navigator.onLine)
- * E chave "Simular Conectividade" da interface. Quando o estado muda,
- * todos os observadores inscritos são notificados — o SyncManager é um deles
- * e dispara a sincronização da Outbox assim que a conexão volta.
+ * O app tem DUAS fontes de "offline", e só está online quando as duas permitem:
+ *  1. a chave "Simular conectividade" da tela (exigida pelo enunciado para demonstrar o modo offline);
+ *  2. a rede real do aparelho (eventos online/offline do navegador).
+ * Quando o resultado muda, todos os observadores inscritos são notificados — o SyncManager
+ * é um deles e dispara a sincronização da Outbox assim que a conexão volta.
  */
-const CHAVE = 'mf.simuladorOnline';
+const CHAVE = 'mf.simuladorOnline';   // onde a posição da chave fica salva (sobrevive ao F5)
 
 class ConnectivityMonitor {
   #observadores = new Set();
-  #simuladoOnline;
-  #redeOnline;
+  #chaveLigada;   // fonte 1: chave da tela
+  #temRede;       // fonte 2: rede real
 
   constructor() {
     let salvo = null;
     try { salvo = localStorage.getItem(CHAVE); } catch { /* sem storage */ }
-    this.#simuladoOnline = salvo === null ? true : salvo === 'true';
-    this.#redeOnline = navigator.onLine;
-    window.addEventListener('online', () => this.#atualizarRede(true));
-    window.addEventListener('offline', () => this.#atualizarRede(false));
+    this.#chaveLigada = salvo === null ? true : salvo === 'true';
+    this.#temRede = navigator.onLine;
+    window.addEventListener('online', () => this.#redeMudou(true));
+    window.addEventListener('offline', () => this.#redeMudou(false));
   }
 
-  get online() { return this.#simuladoOnline && this.#redeOnline; }
-  get simuladoOnline() { return this.#simuladoOnline; }
-  get redeOnline() { return this.#redeOnline; }
+  /** O app só fala com o servidor se a chave estiver ligada E houver rede. */
+  get online() { return this.#chaveLigada && this.#temRede; }
+  get chaveLigada() { return this.#chaveLigada; }
+  get temRede() { return this.#temRede; }
 
-  /** Chave da interface "Simular Conectividade (Online / Offline)". */
-  definirSimulado(online) {
-    if (online === this.#simuladoOnline) return;   // nada mudou: ninguém é notificado
-    const antes = this.online;
-    this.#simuladoOnline = online;
-    try { localStorage.setItem(CHAVE, String(online)); } catch { /* ignora */ }
-    this.#notificar(antes);
+  /** Fonte 1: o usuário clicou na chave "Simular conectividade" (Cabecalho.jsx). */
+  ligarChave(ligada) {
+    if (ligada === this.#chaveLigada) return;   // nada mudou: ninguém é notificado
+    this.#mudar(() => {
+      this.#chaveLigada = ligada;
+      try { localStorage.setItem(CHAVE, String(ligada)); } catch { /* ignora */ }
+    });
   }
 
-  #atualizarRede(online) {
-    if (online === this.#redeOnline) return;       // evento repetido do navegador
-    const antes = this.online;
-    this.#redeOnline = online;
+  /** Fonte 2: o navegador avisou que a rede caiu ou voltou. */
+  #redeMudou(temRede) {
+    if (temRede === this.#temRede) return;      // evento repetido do navegador
+    this.#mudar(() => { this.#temRede = temRede; });
+  }
+
+  /** Parte comum às duas fontes: anota como estava, aplica a mudança e notifica a lista. */
+  #mudar(aplicar) {
+    const antes = this.online;   // anota ANTES de mudar: os observadores precisam saber se houve transição
+    aplicar();
     this.#notificar(antes);
   }
 
@@ -47,9 +55,9 @@ class ConnectivityMonitor {
     return () => this.#observadores.delete(observador);
   }
 
-  #notificar(estadoAnterior) {
-    const evento = { online: this.online, anterior: estadoAnterior, simulado: this.#simuladoOnline, rede: this.#redeOnline };
-    // Um observador com erro não pode impedir que os outros sejam avisados
+  #notificar(anterior) {
+    const evento = { online: this.online, anterior, chaveLigada: this.#chaveLigada, temRede: this.#temRede };
+    // Um observador com erro não pode impedir que os outros sejam notificados
     this.#observadores.forEach((fn) => {
       try { fn(evento); } catch (e) { console.error('[ConnectivityMonitor] observador falhou', e); }
     });

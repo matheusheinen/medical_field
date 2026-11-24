@@ -10,13 +10,13 @@ import { uuid } from '../util/uuid';
  *    é recusado (401), o app continua funcionando offline e pede um novo login apenas para sincronizar.
  */
 const CHAVE = 'mf.sessao';
-const ouvintes = new Set();
+const observadores = new Set();   // Observer: quem quer saber da sessão (useSessao)
 
 function ler(chave) { try { return localStorage.getItem(chave); } catch { return null; } }
 function gravar(chave, v) { try { v === null ? localStorage.removeItem(chave) : localStorage.setItem(chave, v); } catch { /* */ } }
-/** Observer: avisa cada inscrito; um observador com erro não impede que os outros sejam avisados. */
-function avisar(s) {
-  ouvintes.forEach((f) => {
+/** Notifica cada inscrito; um observador com erro não impede que os outros sejam notificados. */
+function notificar(s) {
+  observadores.forEach((f) => {
     try { f(s); } catch (e) { console.error('[sessao] observador falhou', e); }
   });
 }
@@ -37,7 +37,7 @@ export const sessao = {
   salvar(dados) {
     const s = { ...dados, tokenExpirado: false };
     gravar(CHAVE, JSON.stringify(s));
-    avisar(s);
+    notificar(s);
   },
 
   /** O servidor recusou o token (401): mantém a sessão local, só marca que é preciso entrar de novo. */
@@ -46,13 +46,13 @@ export const sessao = {
     if (!s || s.tokenExpirado) return;
     const novo = { ...s, tokenExpirado: true };
     gravar(CHAVE, JSON.stringify(novo));
-    avisar(novo);
+    notificar(novo);
   },
 
   /** Encerra a sessão local. Os dados do aparelho são limpos antes, em AtendimentoService.sair(). */
-  encerrar() { gravar(CHAVE, null); avisar(null); },
+  encerrar() { gravar(CHAVE, null); notificar(null); },
 
-  inscrever(f) { ouvintes.add(f); return () => ouvintes.delete(f); },
+  inscrever(f) { observadores.add(f); return () => observadores.delete(f); },
 };
 
 /** Identificador estável deste dispositivo (ambulância/tablet), enviado nos logs e no sync. */

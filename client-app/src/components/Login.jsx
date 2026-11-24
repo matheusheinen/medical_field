@@ -83,7 +83,7 @@ export default function Login({ reautenticar = null, aoCancelar }) {
           <div className="alerta aviso">
             <Icone nome="semSinal" tamanho={16} />
             <span>{reautenticar ? 'Para renovar a sessão é preciso conexão.' : 'Entrar precisa de conexão; depois o app funciona offline até você sair.'}{' '}
-              <button type="button" className="link" onClick={() => connectivity.definirSimulado(true)}>Voltar ao modo online</button>
+              <button type="button" className="link" onClick={() => connectivity.ligarChave(true)}>Voltar ao modo online</button>
             </span>
           </div>
         )}

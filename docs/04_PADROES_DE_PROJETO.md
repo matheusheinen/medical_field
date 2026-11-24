@@ -54,11 +54,12 @@ public interface ConflictStrategy {
 | Papel | No código |
 |---|---|
 | Sujeito | `ConnectivityMonitor.js`: lista `#observadores` (`Set`), `inscrever()`, `#notificar()` |
-| Mudança de estado | `definirSimulado()` (chave da tela) e `#atualizarRede()` (eventos `online`/`offline` do navegador) |
+| Estado | Duas fontes: `#chaveLigada` (chave "Simular conectividade") e `#temRede` (rede real). `online` = as duas permitem |
+| Mudança de estado | `ligarChave()` (clique na chave, `Cabecalho.jsx`) e `#redeMudou()` (eventos `online`/`offline` do navegador). As duas passam por `#mudar()`, que anota o estado anterior, aplica a mudança e chama `#notificar()` |
 | Observadores | `SyncManager` (sincroniza quando a conexão volta) e `useConectividade` em `hooks.js` (redesenha as telas) |
 | Sujeitos com a mesma forma | `SyncManager` (estado da sincronização → `useSync`) e `sessao.js` (sessão → `useSessao`) |
 
-Os três sujeitos protegem cada observador com `try/catch`: um observador com erro não impede que os outros sejam avisados.
+Os três sujeitos seguem a mesma forma: uma lista `observadores`, `inscrever()` (que devolve a função de sair) e `notificar()`, que protege cada observador com `try/catch` para que um observador com erro não impeça os outros de serem notificados.
 
 ```js
 // SyncManager.js: o observador decide o que fazer com o aviso

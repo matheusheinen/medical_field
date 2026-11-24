@@ -113,7 +113,7 @@ const r11 = await syncManager.receberDados();
 ok(r11.recebidos.medicamentos >= 3 && (await db.medicamentos.count()) === meds9.length, `recebidos ${r11.recebidos.medicamentos} medicamento(s) (incremental); locais = ${await db.medicamentos.count()}`);
 
 passo(12, 'Cliente OFFLINE: registrar ocorrência (nova pessoa + prontuário + atendimento)');
-connectivity.definirSimulado(false);
+connectivity.ligarChave(false);
 let bloqueado = false;
 try { await remoto.pull(); } catch (e) { bloqueado = e instanceof OfflineError; }
 ok(bloqueado, 'com o simulador OFFLINE nenhuma requisição sai do dispositivo');
@@ -137,7 +137,7 @@ ok(!(await portal('/prontuario')).corpo.some((p) => p.pessoaId === r12.pessoaId)
 ok(!(await portal('/atendimento')).corpo.some((a) => a.id === r12.atendimentoId), 'atendimento ausente no portal');
 
 passo(14, 'Cliente ONLINE: o Observer dispara a sincronização automaticamente');
-connectivity.definirSimulado(true);         // nenhum outro comando: quem sincroniza é o observer
+connectivity.ligarChave(true);         // nenhum outro comando: quem sincroniza é o observer
 for (let i = 0; i < 50 && ((await db.outbox.count()) > 0 || syncManager.estado.sincronizando); i++) await esperar(100);
 ok((await db.outbox.count()) === 0, `Outbox esvaziada — ${syncManager.estado.mensagem}`);
 ok((await db.atendimentos.get(r12.atendimentoId)).syncStatus === 'SINCRONIZADO', 'registro local marcado como SINCRONIZADO');
@@ -166,13 +166,13 @@ ok((await portal('/atendimento')).corpo.filter((a) => a.id === r12.atendimentoId
 
 passo('E2', 'Conflito: prontuário editado no servidor E no dispositivo offline → Strategy MERGE');
 execSync(`${process.env.MF_DB_PSQL ?? 'psql -h localhost -U medicalfield -d medicalfield'} -q -c "UPDATE prontuario SET alergias = alergias || ', AAS', versao = versao + 1, atualizado_em = now(), sincronizado_em = now() WHERE id = '${prJoao.id}'"`, { stdio: 'ignore' });
-connectivity.definirSimulado(false);
+connectivity.ligarChave(false);
 const prLocal = await local.prontuarioDaPessoa(joao.id);
 await registrarOcorrencia({
   pessoa: joao, prontuario: { ...prLocal, alergias: `${prLocal.alergias}, Iodo` }, profissionalId: sess.profissional.id,
   atendimento: { dataHora: new Date().toISOString(), queixaPrincipal: 'Retorno - dispneia', triagemManchester: 'AMARELO' },
 });
-connectivity.definirSimulado(true);
+connectivity.ligarChave(true);
 for (let i = 0; i < 50 && ((await db.outbox.count()) > 0 || syncManager.estado.sincronizando); i++) await esperar(100);
 const hist = (await local.listarHistorico())[0];
 const prFinal = (await portal(`/prontuario/${joao.id}`)).corpo;
@@ -215,13 +215,13 @@ const idOutro = crypto.randomUUID();
 await portal('/pessoa', { method: 'POST', body: JSON.stringify({ id: idOutro, nome: 'Carla Mendes', cpf: cpfOutro, telefone: '(51) 99876-5432' }) });
 await portal('/prontuario', { method: 'POST', body: JSON.stringify({ id: crypto.randomUUID(), pessoaId: idOutro, alergias: 'Látex' }) });
 // este aparelho, offline, cadastra a mesma paciente (CPF só com dígitos) com outra alergia
-connectivity.definirSimulado(false);
+connectivity.ligarChave(false);
 const r8 = await registrarOcorrencia({
   pessoa: { nome: 'Carla Mendes', cpf: digitos }, prontuario: { alergias: 'Dipirona' }, profissionalId: sess.profissional.id,
   atendimento: { dataHora: new Date().toISOString(), queixaPrincipal: 'Queda de bicicleta', triagemManchester: 'VERDE' },
 });
 ok(r8.pessoaId !== idOutro, 'o aparelho gerou outro id para a paciente');
-connectivity.definirSimulado(true);
+connectivity.ligarChave(true);
 for (let i = 0; i < 50 && ((await db.outbox.count()) > 0 || syncManager.estado.sincronizando); i++) await esperar(100);
 const h8 = (await local.listarHistorico())[0];
 ok(h8.vinculados?.length === 2 && !h8.erros?.length, `pessoa e prontuário VINCULADOS ao cadastro existente (${JSON.stringify(h8.porStatus)})`);
@@ -237,12 +237,12 @@ ok((await portal(`/auditoria?entidadeId=${idOutro}`)).corpo.some((a) => a.operac
 passo('E9', 'Token vencido: o app segue funcionando e só pede login para sincronizar; sair nunca perde dados');
 sessao.salvar({ ...sess, expiraEm: new Date(Date.now() - 1000).toISOString() });
 ok(!!sessao.obter() && !sessao.tokenValido(), 'sessão local continua aberta com o token vencido');
-connectivity.definirSimulado(false);
+connectivity.ligarChave(false);
 await registrarOcorrencia({
   pessoa: await local.obterPessoa(joao.id), prontuario: await local.prontuarioDaPessoa(joao.id), profissionalId: sess.profissional.id,
   atendimento: { dataHora: new Date().toISOString(), queixaPrincipal: 'Dor torácica', triagemManchester: 'LARANJA' },
 });
-connectivity.definirSimulado(true);
+connectivity.ligarChave(true);
 let expirada = false;
 try { await syncManager.sincronizar(); } catch (e) { expirada = e instanceof SessaoExpiradaError; }
 ok(expirada && (await db.outbox.count()) > 0, 'sincronizar pede novo login; o atendimento continua na Outbox');

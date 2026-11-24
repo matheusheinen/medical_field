@@ -14,7 +14,7 @@ import { UpsertCommand } from './commands';
  */
 class SyncManager {
   #estado = { sincronizando: false, mensagem: null, erro: null, ultimaSync: null };
-  #ouvintes = new Set();
+  #observadores = new Set();   // quem quer saber do estado da sincronização (a barra de status, via useSync)
   #emAndamento = null;
   #recuperado = Promise.resolve();
 
@@ -32,10 +32,16 @@ class SyncManager {
   }
 
   get estado() { return this.#estado; }
-  inscrever(fn) { this.#ouvintes.add(fn); return () => this.#ouvintes.delete(fn); }
-  #atualizar(parcial) {
+  inscrever(fn) { this.#observadores.add(fn); return () => this.#observadores.delete(fn); }
+
+  /** Muda parte do estado e notifica a lista (mesma forma do ConnectivityMonitor). */
+  #mudarEstado(parcial) {
     this.#estado = { ...this.#estado, ...parcial };
-    this.#ouvintes.forEach((fn) => {
+    this.#notificar();
+  }
+
+  #notificar() {
+    this.#observadores.forEach((fn) => {
       try { fn(this.#estado); } catch (e) { console.error('[SyncManager] observador falhou', e); }
     });
   }
@@ -43,14 +49,14 @@ class SyncManager {
   /** Executa uma tarefa por vez (evita dois envios simultâneos da mesma Outbox). */
   async #exclusivo(rotulo, tarefa) {
     while (this.#emAndamento) await this.#emAndamento.catch(() => {});
-    this.#atualizar({ sincronizando: true, mensagem: rotulo, erro: null });
+    this.#mudarEstado({ sincronizando: true, mensagem: rotulo, erro: null });
     this.#emAndamento = (async () => {
       try {
         const r = await tarefa();
-        this.#atualizar({ sincronizando: false, ultimaSync: new Date().toISOString() });
+        this.#mudarEstado({ sincronizando: false, ultimaSync: new Date().toISOString() });
         return r;
       } catch (e) {
-        this.#atualizar({ sincronizando: false, erro: e instanceof OfflineError ? 'Sem conexão' : e.message });
+        this.#mudarEstado({ sincronizando: false, erro: e instanceof OfflineError ? 'Sem conexão' : e.message });
         throw e;
       }
     })();
@@ -65,7 +71,7 @@ class SyncManager {
       const pull = await this.#pull();
       const resumo = { tipo: 'SYNC', motivo, logs, ...push, recebidos: pull };
       await local.registrarHistorico(resumo);
-      this.#atualizar({ mensagem: this.#descrever(resumo) });
+      this.#mudarEstado({ mensagem: this.#descrever(resumo) });
       return resumo;
     });
   }
@@ -76,7 +82,7 @@ class SyncManager {
       const push = await this.#push();
       const resumo = { tipo: 'PUSH', motivo, logs, ...push };
       if (push.enviados) await local.registrarHistorico(resumo);
-      this.#atualizar({ mensagem: this.#descrever(resumo) });
+      this.#mudarEstado({ mensagem: this.#descrever(resumo) });
       return resumo;
     });
   }
@@ -87,7 +93,7 @@ class SyncManager {
       const recebidos = await this.#pull();
       const resumo = { tipo: 'PULL', motivo, recebidos };
       await local.registrarHistorico(resumo);
-      this.#atualizar({ mensagem: this.#descrever(resumo) });
+      this.#mudarEstado({ mensagem: this.#descrever(resumo) });
       return resumo;
     });
   }

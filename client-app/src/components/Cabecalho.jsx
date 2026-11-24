@@ -7,7 +7,7 @@ import { useConectividade, useSync } from '../hooks';
 import Icone from './Icone';
 
 export default function Cabecalho({ s, pendentes, aoReautenticar, aoVerSincronizacao }) {
-  const { online, simulado, rede } = useConectividade();
+  const { online, chaveLigada, temRede } = useConectividade();
   const sync = useSync();
   const [saida, setSaida] = useState(null);   // pendências mostradas no diálogo de saída
   const profissional = s.profissional;
@@ -46,10 +46,10 @@ export default function Cabecalho({ s, pendentes, aoReautenticar, aoVerSincroniz
           <Icone nome={online ? 'sinal' : 'semSinal'} />
           <div className="simulador-texto">
             <strong>{online ? 'Online' : 'Offline'}</strong>
-            <span>{!rede ? 'sem rede no aparelho' : 'Simular conectividade'}</span>
+            <span>{!temRede ? 'sem rede no aparelho' : 'Simular conectividade'}</span>
           </div>
-          <button role="switch" aria-checked={simulado} aria-label="Simular conectividade (online/offline)" className="chave"
-                  onClick={() => connectivity.definirSimulado(!simulado)}>
+          <button role="switch" aria-checked={chaveLigada} aria-label="Simular conectividade (online/offline)" className="chave"
+                  onClick={() => connectivity.ligarChave(!chaveLigada)}>
             <span className="bolinha" />
           </button>
         </div>
