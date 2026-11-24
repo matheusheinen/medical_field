@@ -1,4 +1,3 @@
-import { db } from '../db/localDb';
 import { connectivity } from '../net/ConnectivityMonitor';
 import { LocalRepository as local } from '../repositories/LocalRepository';
 import { RemoteRepository as remoto } from '../repositories/RemoteRepository';
@@ -43,7 +42,7 @@ export async function registrarOcorrencia({ pessoa, prontuario, atendimento, pro
   const atendimentoId = uuid();
   const gravados = [];
 
-  await db.transaction('rw', [db.pessoas, db.prontuarios, db.atendimentos, db.outbox, db.logs], async () => {
+  await local.emTransacao(async () => {
     if (mudou(pessoaAntes, pessoa, CAMPOS_PESSOA)) {
       const dados = {
         ...limpar(Object.fromEntries(CAMPOS_PESSOA.map((c) => [c, pessoa[c]]))),
@@ -119,11 +118,7 @@ export async function login(tipoRegistro, registro, senha) {
 
 /** O que ainda não chegou ao servidor. */
 export async function pendenciasLocais() {
-  const [naFila, comErro, logs] = await Promise.all([
-    db.outbox.filter((o) => o.status !== 'ERRO').count(),
-    db.outbox.where('status').equals('ERRO').count(),
-    db.logs.filter((l) => !l.enviado).count(),
-  ]);
+  const { naFila, comErro, logs } = await local.contarPendencias();
   return { naFila, comErro, logs, total: naFila + comErro + logs };
 }
 

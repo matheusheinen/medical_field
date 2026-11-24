@@ -1,12 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db/localDb';
 import { LocalRepository as local } from '../repositories/LocalRepository';
 import { dispositivoId } from '../services/sessao';
 import { formatarDataHora } from '../util/uuid';
 
 export default function PainelSync() {
   const outbox = useLiveQuery(() => local.listarOutbox(), [], []);
-  const logs = useLiveQuery(() => db.logs.orderBy('dataHora').reverse().limit(30).toArray(), [], []);
+  const logs = useLiveQuery(() => local.listarLogsRecentes(30), [], []);
   const historico = useLiveQuery(() => local.listarHistorico(), [], []);
   const ultimoPull = useLiveQuery(() => local.meta('ultimoPull'), [], null);
 

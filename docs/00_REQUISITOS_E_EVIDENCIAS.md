@@ -19,7 +19,7 @@ Como cada exigência do enunciado (*Trabalho Final – MedicalField*, Arquitetur
 | Banco central | PostgreSQL | `database/01_schema.sql` |
 | Banco local embarcado | IndexedDB (Dexie) no aparelho | `client-app/src/db/localDb.js` |
 | Execução na VM, sem contêineres | Instalação nativa (Nginx + systemd) em `177.44.248.79` | `scripts/install_vm.sh`, `deploy/` |
-| Rotas autenticadas, exceto o login | JWT obrigatório nos três serviços; só `POST /auth/login` é pública (as 25 rotas sem token respondem 401). Rotas de administração exigem perfil ADMIN (403) | `auth.ts`, `AuthFilter.java`, `security.py` |
+| Rotas autenticadas, exceto o login | JWT obrigatório nos três serviços; só `POST /auth/login` é pública (as outras 24 rotas, 4 no auth, 18 no clinical e 2 no document, respondem 401 sem token). Rotas de administração exigem perfil ADMIN (403) | `auth.ts`, `AuthFilter.java`, `security.py` |
 | Login por CRM, COREN ou ID de socorrista | `tipoRegistro` + `registro` + senha (bcrypt) | `auth-service/src/index.ts` |
 | Log de acesso em todos os serviços | Interceptor em cada serviço → console + tabela `log_acesso` (ver 0.3) | `accessLog.ts`, `AccessLogFilter.java`, `access_log.py` |
 | Interface do cliente + chave "Simular Conectividade" | PWA React com ficha completa; chave no cabeçalho bloqueia toda requisição em OFFLINE. Layout para celular | `client-app/src/components/`, `net/ConnectivityMonitor.js` |

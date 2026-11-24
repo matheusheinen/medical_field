@@ -9,7 +9,7 @@ import ListaPacientes from './components/ListaPacientes';
 import ListaMedicamentos from './components/ListaMedicamentos';
 import PainelSync from './components/PainelSync';
 import Icone from './components/Icone';
-import { db } from './db/localDb';
+import { LocalRepository as local } from './repositories/LocalRepository';
 
 const ABAS = [
   { id: 'nova', rotulo: 'Nova ocorrência', icone: 'mais' },
@@ -23,7 +23,7 @@ export default function App() {
   const s = useSessao();
   const [aba, setAba] = useState('nova');
   const [reautenticar, setReautenticar] = useState(false);
-  const pendentes = useLiveQuery(() => db.outbox.count(), [], 0);
+  const pendentes = useLiveQuery(() => local.contarPendentes(), [], 0);
 
   if (!s) return <Login />;
   // token vencido: só a senha é pedida de novo; o app continua usável sem isso (offline)

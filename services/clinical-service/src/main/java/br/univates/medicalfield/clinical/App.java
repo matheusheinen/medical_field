@@ -38,7 +38,7 @@ public final class App {
         ClinicalRepository repo = new ClinicalRepository();
         AuditRepository auditoria = new AuditRepository();
         LogRepository logs = new LogRepository();
-        UpsertService upsert = new UpsertService(repo, auditoria, new ConflictStrategyFactory());
+        UpsertService upsert = new UpsertService(repo, auditoria, new SyncOperacaoRepository(), new ConflictStrategyFactory());
         MedicamentoRepository medicamentoRepo = new MedicamentoRepository();
         SyncService sync = new SyncService(repo, medicamentoRepo, upsert);
         MedicamentoService medicamentos = new MedicamentoService(medicamentoRepo, auditoria);

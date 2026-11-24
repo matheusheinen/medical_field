@@ -30,7 +30,7 @@ public final class SyncService {
         OffsetDateTime desde = desdeParam == null || desdeParam.isBlank() ? null : EntityDef.dataHora(desdeParam);
         try (Connection c = Database.get().conexao()) {
             Map<String, Object> r = new LinkedHashMap<>();
-            r.put("servidorAgora", EntityDef.dataHora(Jdbc.umOuNulo(c, "SELECT now() AS agora").get("agora")));
+            r.put("servidorAgora", repo.agora(c));
             r.put("desde", desde);
             r.put("medicamentos", medicamentos.alteradosDesde(c, desde));
             for (EntityDef def : List.of(Entities.PESSOA, Entities.PRONTUARIO, Entities.ATENDIMENTO)) {

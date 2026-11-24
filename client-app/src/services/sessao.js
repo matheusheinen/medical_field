@@ -14,7 +14,12 @@ const ouvintes = new Set();
 
 function ler(chave) { try { return localStorage.getItem(chave); } catch { return null; } }
 function gravar(chave, v) { try { v === null ? localStorage.removeItem(chave) : localStorage.setItem(chave, v); } catch { /* */ } }
-function avisar(s) { ouvintes.forEach((f) => f(s)); }
+/** Observer: avisa cada inscrito; um observador com erro não impede que os outros sejam avisados. */
+function avisar(s) {
+  ouvintes.forEach((f) => {
+    try { f(s); } catch (e) { console.error('[sessao] observador falhou', e); }
+  });
+}
 
 export const sessao = {
   /** Sessão local (independe da validade do token). */

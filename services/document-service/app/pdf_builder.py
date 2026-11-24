@@ -120,10 +120,6 @@ class FichaPdfBuilder:
         ]))
         self._elementos.append(t)
 
-    @staticmethod
-    def _campo(rotulo: str, valor: str) -> tuple:
-        return (rotulo, valor)
-
     # ---------------------------------------------------------------- etapas do Builder
     def cabecalho(self):
         self._elementos.append(Paragraph("MedicalField — Ficha de Atendimento Pré-Hospitalar", self.s_titulo))

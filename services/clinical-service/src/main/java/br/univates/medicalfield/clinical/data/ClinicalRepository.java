@@ -164,6 +164,11 @@ public final class ClinicalRepository {
         return ficha;
     }
 
+    /** Relógio do banco: o cliente guarda este instante e o envia no próximo pull (?desde=...). */
+    public OffsetDateTime agora(Connection c) throws SQLException {
+        return EntityDef.dataHora(Jdbc.umOuNulo(c, "SELECT now() AS agora").get("agora"));
+    }
+
     /** Ids alterados no servidor desde um instante (para o pull do cliente). */
     public List<UUID> idsAlteradosDesde(Connection c, EntityDef def, OffsetDateTime desde) throws SQLException {
         List<UUID> ids = new ArrayList<>();

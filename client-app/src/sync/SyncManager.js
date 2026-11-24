@@ -1,4 +1,3 @@
-import { db } from '../db/localDb';
 import { connectivity } from '../net/ConnectivityMonitor';
 import { OfflineError } from '../net/apiClient';
 import { LocalRepository as local } from '../repositories/LocalRepository';
@@ -23,7 +22,7 @@ class SyncManager {
     // Recuperação: se o app foi fechado no meio de um envio, os comandos ficaram
     // marcados como ENVIANDO e nunca mais seriam enviados. Voltam para a fila;
     // o reenvio é seguro porque cada comando mantém o mesmo opId (idempotência).
-    this.#recuperado = db.outbox.where('status').equals('ENVIANDO').modify({ status: 'PENDENTE' }).catch(() => {});
+    this.#recuperado = local.recuperarEnvioInterrompido().catch(() => {});
 
     connectivity.inscrever((ev) => {
       if (ev.online && !ev.anterior && sessao.tokenValido()) {
@@ -36,7 +35,9 @@ class SyncManager {
   inscrever(fn) { this.#ouvintes.add(fn); return () => this.#ouvintes.delete(fn); }
   #atualizar(parcial) {
     this.#estado = { ...this.#estado, ...parcial };
-    this.#ouvintes.forEach((fn) => fn(this.#estado));
+    this.#ouvintes.forEach((fn) => {
+      try { fn(this.#estado); } catch (e) { console.error('[SyncManager] observador falhou', e); }
+    });
   }
 
   /** Executa uma tarefa por vez (evita dois envios simultâneos da mesma Outbox). */
@@ -95,12 +96,12 @@ class SyncManager {
 
   async #push() {
     await this.#recuperado;
-    const linhas = await db.outbox.orderBy('seq').filter((o) => o.status !== 'ENVIANDO').toArray();
+    const linhas = await local.comandosParaEnviar();
     if (!linhas.length) return { enviados: 0, porStatus: {}, conflitos: [], vinculados: [], erros: [] };
     if (!connectivity.online) throw new OfflineError();
 
     const seqs = linhas.map((l) => l.seq);
-    await db.outbox.where('seq').anyOf(seqs).modify({ status: 'ENVIANDO' });
+    await local.marcarComandos(seqs, 'ENVIANDO');
     const comandos = linhas.map(UpsertCommand.desserializar);
 
     let resposta;
@@ -108,7 +109,7 @@ class SyncManager {
       resposta = await remoto.push(dispositivoId(), comandos.map((c) => c.paraOperacao()));
     } catch (e) {
       // falhou o envio: nada foi confirmado, os comandos voltam para a fila (serão reenviados com o mesmo opId)
-      await db.outbox.where('seq').anyOf(seqs).modify({ status: 'PENDENTE' });
+      await local.marcarComandos(seqs, 'PENDENTE');
       throw e;
     }
 
@@ -124,7 +125,7 @@ class SyncManager {
 
       if (res.status === 'ERRO') {
         erros.push({ entidade: cmd.entidade, id: cmd.entidadeId, mensagem: res.mensagem });
-        await db.outbox.update(cmd.seq, { status: 'ERRO', mensagem: res.mensagem });
+        await local.marcarComandoComErro(cmd.seq, res.mensagem);
         await tabela.update(cmd.entidadeId, { syncStatus: 'ERRO' });
         continue;
       }
@@ -132,7 +133,7 @@ class SyncManager {
       if (res.status === 'CONFLITO_RESOLVIDO') {
         conflitos.push({ entidade: cmd.entidade, id: cmd.entidadeId, estrategia: res.estrategia });
       }
-      await db.outbox.delete(cmd.seq);
+      await local.removerComando(cmd.seq);
 
       // Cadastro duplicado (ex.: paciente com o mesmo CPF já cadastrado por outra equipe):
       // o servidor vinculou ao registro existente, então o id local é trocado pelo do servidor
@@ -145,11 +146,9 @@ class SyncManager {
 
       // Se o usuário editou o mesmo registro durante o envio, mantém a edição local
       // e só atualiza a versão-base do comando que ainda está na fila.
-      const outroPendente = await db.outbox
-        .where('[entidade+entidadeId]').equals([cmd.entidade, id])
-        .filter((o) => o.status === 'PENDENTE').first();
+      const outroPendente = await local.comandoPendenteDe(cmd.entidade, id);
       if (outroPendente) {
-        await db.outbox.update(outroPendente.seq, { dados: { ...outroPendente.dados, versao: res.registro.versao } });
+        await local.atualizarVersaoBase(outroPendente, res.registro.versao);
         await tabela.update(id, { versao: res.registro.versao });
       } else if (res.registro) {
         await tabela.put({ ...res.registro, syncStatus: 'SINCRONIZADO' });

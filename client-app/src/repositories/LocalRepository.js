@@ -2,26 +2,64 @@ import { db } from '../db/localDb';
 import { uuid, agoraIso } from '../util/uuid';
 
 /**
- * Padrão REPOSITORY (local): acesso ao banco embarcado (IndexedDB).
- * Telas e serviços usam estes métodos; não conhecem Dexie nem IndexedDB.
+ * Padrão REPOSITORY (local): ÚNICO ponto de acesso ao banco embarcado (IndexedDB).
+ * Telas, serviços e o SyncManager usam estes métodos; só este arquivo conhece o Dexie.
  */
 const tabela = { pessoa: db.pessoas, prontuario: db.prontuarios, atendimento: db.atendimentos };
 
 export const LocalRepository = {
-  db,
   tabela: (entidade) => tabela[entidade],
+
+  /** Executa fn numa transação com os dados clínicos, a Outbox e os logs (tudo grava ou nada grava). */
+  emTransacao: (fn) => db.transaction('rw', [db.pessoas, db.prontuarios, db.atendimentos, db.outbox, db.logs], fn),
 
   // ---------------------------------------------------------------- consultas
   listarPessoas: () => db.pessoas.orderBy('nome').toArray(),
   obterPessoa: (id) => db.pessoas.get(id),
   prontuarioDaPessoa: (pessoaId) => db.prontuarios.where('pessoaId').equals(pessoaId).first(),
-  listarAtendimentos: () => db.atendimentos.orderBy('dataHora').reverse().toArray(),
-  obterAtendimento: (id) => db.atendimentos.get(id),
   listarMedicamentos: () => db.medicamentos.orderBy('nome').filter((m) => m.ativo !== false).toArray(),
   listarOutbox: () => db.outbox.orderBy('seq').toArray(),
   contarPendentes: () => db.outbox.count(),
   listarLogsNaoEnviados: () => db.logs.filter((l) => !l.enviado).toArray(),
+  listarLogsRecentes: (limite = 30) => db.logs.orderBy('dataHora').reverse().limit(limite).toArray(),
   listarHistorico: () => db.historico.orderBy('id').reverse().limit(50).toArray(),
+
+  /** Atendimentos (mais recentes primeiro) com a pessoa de cada um. */
+  async listarAtendimentosComPessoa() {
+    const ats = await db.atendimentos.orderBy('dataHora').reverse().toArray();
+    const pessoas = new Map((await db.pessoas.toArray()).map((p) => [p.id, p]));
+    return ats.map((a) => ({ ...a, pessoa: pessoas.get(a.pessoaId) }));
+  },
+
+  /** Pessoas (por nome) com o prontuário de cada uma. */
+  async listarPessoasComProntuario() {
+    const pessoas = await db.pessoas.orderBy('nome').toArray();
+    const pronts = new Map((await db.prontuarios.toArray()).map((p) => [p.pessoaId, p]));
+    return pessoas.map((p) => ({ ...p, prontuario: pronts.get(p.id) }));
+  },
+
+  /** O que ainda não chegou ao servidor: comandos na fila, comandos recusados (ERRO) e logs offline. */
+  async contarPendencias() {
+    const [naFila, comErro, logs] = await Promise.all([
+      db.outbox.filter((o) => o.status !== 'ERRO').count(),
+      db.outbox.where('status').equals('ERRO').count(),
+      db.logs.filter((l) => !l.enviado).count(),
+    ]);
+    return { naFila, comErro, logs };
+  },
+
+  // ---------------------------------------------------------------- Outbox (usada pelo SyncManager)
+  /** App fechado no meio de um envio: os comandos ENVIANDO voltam para a fila (mesmo opId, reenvio seguro). */
+  recuperarEnvioInterrompido: () => db.outbox.where('status').equals('ENVIANDO').modify({ status: 'PENDENTE' }),
+  comandosParaEnviar: () => db.outbox.orderBy('seq').filter((o) => o.status !== 'ENVIANDO').toArray(),
+  marcarComandos: (seqs, status) => db.outbox.where('seq').anyOf(seqs).modify({ status }),
+  marcarComandoComErro: (seq, mensagem) => db.outbox.update(seq, { status: 'ERRO', mensagem }),
+  removerComando: (seq) => db.outbox.delete(seq),
+  /** Comando ainda não enviado para o mesmo registro (o usuário editou de novo durante o envio). */
+  comandoPendenteDe: (entidade, entidadeId) => db.outbox
+    .where('[entidade+entidadeId]').equals([entidade, entidadeId])
+    .filter((o) => o.status === 'PENDENTE').first(),
+  atualizarVersaoBase: (comando, versao) => db.outbox.update(comando.seq, { dados: { ...comando.dados, versao } }),
 
   async meta(chave) { return (await db.meta.get(chave))?.valor; },
   definirMeta: (chave, valor) => db.meta.put({ chave, valor }),
@@ -35,10 +73,7 @@ export const LocalRepository = {
   async salvarComOutbox(comando) {
     const { entidade, entidadeId, dados } = comando;
     await tabela[entidade].put({ ...dados, syncStatus: 'PENDENTE' });
-    const existente = await db.outbox
-      .where('[entidade+entidadeId]').equals([entidade, entidadeId])
-      .filter((o) => o.status === 'PENDENTE')
-      .first();
+    const existente = await LocalRepository.comandoPendenteDe(entidade, entidadeId);
     if (existente) {
       await db.outbox.update(existente.seq, { opId: comando.opId, dados, atualizadoEm: agoraIso() });
     } else {

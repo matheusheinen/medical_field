@@ -20,9 +20,22 @@ public final class ConflictStrategyFactory {
             "prontuario", "MERGE",
             "atendimento", "LWW");
 
+    /**
+     * Fail-fast: um valor inválido no .env (ex.: CONFLICT_STRATEGY_PRONTUARIO=MERG) impede o serviço de subir,
+     * em vez de cair em LWW sem aviso e passar a sobrescrever alergias do prontuário.
+     */
+    public ConflictStrategyFactory() {
+        for (String entidade : PADRAO.keySet()) para(entidade);
+    }
+
     public ConflictStrategy para(String entidade) {
         String nome = Config.estrategiaConflito(entidade, PADRAO.getOrDefault(entidade, "LWW")).toUpperCase();
-        return DISPONIVEIS.getOrDefault(nome, DISPONIVEIS.get("LWW"));
+        ConflictStrategy s = DISPONIVEIS.get(nome);
+        if (s == null) {
+            throw new IllegalStateException("CONFLICT_STRATEGY_" + entidade.toUpperCase() + "=" + nome
+                    + " é inválido. Use um destes: " + String.join(", ", DISPONIVEIS.keySet()));
+        }
+        return s;
     }
 
     /** Usada ao vincular dois cadastros do mesmo paciente: mescla os campos, nunca descarta um lado. */

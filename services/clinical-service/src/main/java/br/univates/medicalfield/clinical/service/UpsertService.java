@@ -33,11 +33,14 @@ public final class UpsertService {
 
     private final ClinicalRepository repo;
     private final AuditRepository auditoria;
+    private final SyncOperacaoRepository operacoes;
     private final ConflictStrategyFactory estrategias;
 
-    public UpsertService(ClinicalRepository repo, AuditRepository auditoria, ConflictStrategyFactory estrategias) {
+    public UpsertService(ClinicalRepository repo, AuditRepository auditoria, SyncOperacaoRepository operacoes,
+                         ConflictStrategyFactory estrategias) {
         this.repo = repo;
         this.auditoria = auditoria;
+        this.operacoes = operacoes;
         this.estrategias = estrategias;
     }
 
@@ -51,7 +54,7 @@ public final class UpsertService {
         UUID id = (UUID) cliente.get("id");
 
         // 1) Idempotência pela chave da operação
-        if (ctx.opId() != null && Jdbc.umOuNulo(c, "SELECT 1 FROM sync_operacao WHERE op_id = ?", ctx.opId()) != null) {
+        if (ctx.opId() != null && operacoes.jaProcessada(c, ctx.opId())) {
             return resultado(ctx, def, id, idOrigem, "DUPLICADO", null, id == null ? null : repo.buscar(c, def, id, false));
         }
 
@@ -135,10 +138,7 @@ public final class UpsertService {
         }
 
         if (ctx.opId() != null) {
-            Jdbc.executar(c, """
-                    INSERT INTO sync_operacao (op_id, entidade, entidade_id, profissional_id, dispositivo_id, resultado, estrategia)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                    ctx.opId(), def.nome(), id, ctx.profissionalId(), ctx.dispositivoId(), status, estrategia);
+            operacoes.registrar(c, ctx.opId(), def.nome(), id, ctx.profissionalId(), ctx.dispositivoId(), status, estrategia);
         }
         return resultado(ctx, def, id, idOrigem, status, estrategia, repo.buscar(c, def, id, false));
     }

@@ -15,3 +15,8 @@ dev-dist/
 docs/final_project_as_2026b.md
 docs/05_ROTEIRO_DE_TESTES.md
 docs/06_DEPLOY_VM.md
+
+# Arquivos gerados pela sincronização do aplicativo Postman com o Git (não usada:
+# a coleção oficial é postman/MedicalField.postman_collection.json)
+.postman/
+postman/*/

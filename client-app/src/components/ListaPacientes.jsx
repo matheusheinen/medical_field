@@ -1,12 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db/localDb';
+import { LocalRepository as local } from '../repositories/LocalRepository';
 
 export default function ListaPacientes() {
-  const dados = useLiveQuery(async () => {
-    const pessoas = await db.pessoas.orderBy('nome').toArray();
-    const pronts = new Map((await db.prontuarios.toArray()).map((p) => [p.pessoaId, p]));
-    return pessoas.map((p) => ({ ...p, prontuario: pronts.get(p.id) }));
-  }, [], []);
+  const dados = useLiveQuery(() => local.listarPessoasComProntuario(), [], []);
 
   return (
     <section className="painel">

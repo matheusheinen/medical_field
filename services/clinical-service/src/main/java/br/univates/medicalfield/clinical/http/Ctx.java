@@ -32,8 +32,6 @@ public final class Ctx {
 
     public Usuario usuario() { return AuthFilter.usuario(ex); }
 
-    public String param(String nome) { return params.get(nome); }
-
     public UUID uuidParam(String nome) {
         try { return UUID.fromString(params.get(nome)); }
         catch (Exception e) { throw new ApiException(400, "Parâmetro '" + nome + "' deve ser um UUID"); }

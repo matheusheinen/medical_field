@@ -28,6 +28,7 @@ class ConnectivityMonitor {
 
   /** Chave da interface "Simular Conectividade (Online / Offline)". */
   definirSimulado(online) {
+    if (online === this.#simuladoOnline) return;   // nada mudou: ninguém é notificado
     const antes = this.online;
     this.#simuladoOnline = online;
     try { localStorage.setItem(CHAVE, String(online)); } catch { /* ignora */ }
@@ -35,6 +36,7 @@ class ConnectivityMonitor {
   }
 
   #atualizarRede(online) {
+    if (online === this.#redeOnline) return;       // evento repetido do navegador
     const antes = this.online;
     this.#redeOnline = online;
     this.#notificar(antes);
@@ -47,7 +49,10 @@ class ConnectivityMonitor {
 
   #notificar(estadoAnterior) {
     const evento = { online: this.online, anterior: estadoAnterior, simulado: this.#simuladoOnline, rede: this.#redeOnline };
-    this.#observadores.forEach((fn) => fn(evento));
+    // Um observador com erro não pode impedir que os outros sejam avisados
+    this.#observadores.forEach((fn) => {
+      try { fn(evento); } catch (e) { console.error('[ConnectivityMonitor] observador falhou', e); }
+    });
   }
 }
 

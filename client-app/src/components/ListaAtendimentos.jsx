@@ -1,17 +1,13 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db/localDb';
+import { LocalRepository as local } from '../repositories/LocalRepository';
 import { abrirFichaPdf, enviarFichaPorEmail } from '../services/AtendimentoService';
 import { useConectividade } from '../hooks';
 import { formatarDataHora } from '../util/uuid';
 
 export default function ListaAtendimentos() {
   const { online } = useConectividade();
-  const dados = useLiveQuery(async () => {
-    const ats = await db.atendimentos.orderBy('dataHora').reverse().toArray();
-    const pessoas = new Map((await db.pessoas.toArray()).map((p) => [p.id, p]));
-    return ats.map((a) => ({ ...a, pessoa: pessoas.get(a.pessoaId) }));
-  }, [], []);
+  const dados = useLiveQuery(() => local.listarAtendimentosComPessoa(), [], []);
   const [email, setEmail] = useState(null);       // { atendimento, destinatario, mensagem }
   const [aviso, setAviso] = useState(null);
   const [ocupado, setOcupado] = useState(null);

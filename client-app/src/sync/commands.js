@@ -4,6 +4,10 @@ import { uuid, agoraIso } from '../util/uuid';
  * Padrão COMMAND: cada alteração feita no dispositivo vira um objeto-comando
  * serializável, guardado na Outbox e executado depois (no servidor) quando houver rede.
  *
+ * Não há método executar() aqui: o comando atravessa a rede como mensagem (variação
+ * "Command Message"). Quem envia é o SyncManager (#push); quem executa é o servidor,
+ * em UpsertService.executar (clinical-service). Um novo tipo de comando exige mudar os dois lados.
+ *
  *  - opId: chave de idempotência. O servidor registra cada opId processado;
  *          reenviar o mesmo comando devolve "DUPLICADO" sem regravar nada.
  *  - dados.versao: versão do servidor em que a edição se baseou (detecção de conflito).
