@@ -129,7 +129,7 @@ export default function NovaOcorrencia({ profissional, aoConcluir }) {
         <div className={`alerta ${enviado ? 'sucesso' : 'aviso'}`}>
           {enviado
             ? <>Atendimento registrado e <b>enviado ao servidor central</b>.</>
-            : <>Atendimento registrado <b>no dispositivo</b> e colocado na Outbox. Será enviado quando houver conexão.</>}
+            : <>Atendimento registrado <b>no dispositivo</b>. Será enviado quando houver conexão.</>}
           {' '}<button type="button" className="link" onClick={aoConcluir}>Ver atendimentos</button>
         </div>
       )}
@@ -190,8 +190,8 @@ export default function NovaOcorrencia({ profissional, aoConcluir }) {
           <Campo rotulo="FC (bpm)"><input type="number" name="freqCardiaca" value={at.freqCardiaca} onChange={alterar(setAt)} min="0" max="300" /></Campo>
           <Campo rotulo="FR (irpm)"><input type="number" name="freqRespiratoria" value={at.freqRespiratoria} onChange={alterar(setAt)} min="0" max="80" /></Campo>
           <Campo rotulo="SpO₂ (%)"><input type="number" name="saturacaoO2" value={at.saturacaoO2} onChange={alterar(setAt)} min="0" max="100" /></Campo>
-          <Campo rotulo="Temperatura (°C)"><input type="number" step="0.1" name="temperatura" value={at.temperatura} onChange={alterar(setAt)} /></Campo>
-          <Campo rotulo="Glicemia (mg/dL)"><input type="number" name="glicemia" value={at.glicemia} onChange={alterar(setAt)} /></Campo>
+          <Campo rotulo="Temperatura (°C)"><input type="number" step="0.1" name="temperatura" value={at.temperatura} onChange={alterar(setAt)} min="25" max="45" /></Campo>
+          <Campo rotulo="Glicemia (mg/dL)"><input type="number" name="glicemia" value={at.glicemia} onChange={alterar(setAt)} min="0" max="2000" /></Campo>
         </div>
       </section>
 
@@ -247,9 +247,9 @@ export default function NovaOcorrencia({ profissional, aoConcluir }) {
                 <option value="">Medicamento…</option>
                 {medicamentos.map((x) => <option key={x.id} value={x.id}>{x.nome} — {x.apresentacao}</option>)}
               </select>
-              <input type="number" step="any" placeholder="Dose" value={m.dose} onChange={(e) => alterarMed(i, 'dose', e.target.value)} />
-              <input placeholder="Unid." value={m.unidade} onChange={(e) => alterarMed(i, 'unidade', e.target.value)} maxLength={10} />
-              <input placeholder="Via" value={m.via} onChange={(e) => alterarMed(i, 'via', e.target.value)} maxLength={30} />
+              <input type="number" step="any" min="0" placeholder="Dose" value={m.dose} onChange={(e) => alterarMed(i, 'dose', e.target.value)} />
+              <input placeholder="Unid." maxLength={10} value={m.unidade} onChange={(e) => alterarMed(i, 'unidade', e.target.value)} maxLength={10} />
+              <input placeholder="Via" maxLength={30} value={m.via} onChange={(e) => alterarMed(i, 'via', e.target.value)} maxLength={30} />
               <input type="datetime-local" value={m.horario} onChange={(e) => alterarMed(i, 'horario', e.target.value)} />
               <button type="button" className="discreto" onClick={() => setMeds((l) => l.filter((_, j) => j !== i))} aria-label="Remover">✕</button>
               {excesso && <div className="aviso-dose">⚠ Dose acima da máxima cadastrada ({excesso.doseMaxima} {excesso.unidade})</div>}

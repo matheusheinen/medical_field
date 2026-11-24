@@ -66,8 +66,10 @@ public final class Router implements HttpHandler {
         } catch (SQLException e) {
             // O detalhe técnico vai só para o log do servidor; o cliente recebe uma mensagem clara
             System.err.println("Erro SQL [" + e.getSQLState() + "]: " + e.getMessage());
-            boolean integridade = e.getSQLState() != null && e.getSQLState().startsWith("23");
-            enviar(ex, integridade ? 409 : 500, Map.of("erro", mensagemSql(e)));
+            String estado = e.getSQLState() == null ? "" : e.getSQLState();
+            // 23 = regra de integridade (409); 22 = dado inválido enviado pelo cliente (400)
+            int status = estado.startsWith("23") ? 409 : estado.startsWith("22") ? 400 : 500;
+            enviar(ex, status, Map.of("erro", mensagemSql(e)));
         } catch (Exception e) {
             e.printStackTrace();
             enviar(ex, 500, Map.of("erro", "Erro interno do servidor"));
@@ -81,6 +83,7 @@ public final class Router implements HttpHandler {
         if (estado.equals("23503")) return "Registro relacionado não encontrado no servidor";
         if (estado.startsWith("23")) return "Dados violam uma regra de integridade";
         if (estado.equals("22001")) return "Um dos campos excede o tamanho máximo permitido";
+        if (estado.equals("22003")) return "Um dos valores numéricos está fora do intervalo permitido";
         return "Erro no banco de dados";
     }
 

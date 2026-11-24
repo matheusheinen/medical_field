@@ -24,7 +24,9 @@ export default function ListaAtendimentos() {
     setOcupado(email.atendimento.id);
     try {
       const r = await enviarFichaPorEmail(email.atendimento.id, email.destinatario, email.mensagem);
-      setAviso({ tipo: 'sucesso', texto: `Ficha enviada para ${r.destinatario} (${r.via === 'SMTP' ? 'via SMTP' : 'gravada em ' + r.arquivo}).` });
+      setAviso({ tipo: 'sucesso', texto: r.via === 'SMTP'
+        ? `Ficha enviada para ${r.destinatario}.`
+        : `O servidor está sem e-mail configurado: a ficha para ${r.destinatario} foi gravada em ${r.arquivo}.` });
       setEmail(null);
     } catch (e2) {
       setAviso({ tipo: 'erro', texto: e2.message });
@@ -64,7 +66,7 @@ export default function ListaAtendimentos() {
           </tbody>
         </table>
       </div>
-      <p className="dica">A ficha em PDF é gerada pelo servidor central (document-service), por isso exige conexão e atendimento já sincronizado.</p>
+      <p className="dica">A ficha em PDF é gerada pelo servidor central, por isso exige conexão e atendimento já sincronizado.</p>
 
       {email && (
         <div className="modal-fundo" onClick={() => setEmail(null)}>

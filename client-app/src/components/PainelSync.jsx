@@ -12,15 +12,15 @@ export default function PainelSync() {
   return (
     <>
       <section className="painel">
-        <h2>Fila de envio (Outbox) <small>({outbox.length})</small></h2>
+        <h2>Fila de envio <small>({outbox.length})</small></h2>
         <p className="dica">Dispositivo <code>{dispositivoId()}</code> · último recebimento do portal: {formatarDataHora(ultimoPull)}</p>
         <div className="tabela-rolagem">
           <table className="tabela-cartoes">
-            <thead><tr><th>#</th><th>Entidade</th><th>opId (idempotência)</th><th>Versão-base</th><th>Criado em</th><th>Status</th></tr></thead>
+            <thead><tr><th>#</th><th>Entidade</th><th>Operação</th><th>Versão</th><th>Criado em</th><th>Status</th></tr></thead>
             <tbody>
               {outbox.map((o) => (
                 <tr key={o.seq}>
-                  <td data-label="#">{o.seq}</td><td data-label="Entidade">{o.entidade}</td><td data-label="opId"><code>{o.opId}</code></td><td data-label="Versão-base">{o.dados.versao}</td>
+                  <td data-label="#">{o.seq}</td><td data-label="Entidade">{o.entidade}</td><td data-label="Operação"><code>{o.opId}</code></td><td data-label="Versão">{o.dados.versao}</td>
                   <td data-label="Criado em">{formatarDataHora(o.criadoEm)}</td>
                   <td data-label="Status"><span className={`selo ${o.status.toLowerCase()}`}>{o.status}</span>{o.mensagem && <div className="erro-txt">{o.mensagem}</div>}</td>
                 </tr>
@@ -53,7 +53,7 @@ export default function PainelSync() {
         <h2>Registro de operações sem conexão</h2>
         <div className="tabela-rolagem">
           <table className="tabela-cartoes">
-            <thead><tr><th>Data/hora</th><th>Método</th><th>Rota</th><th>Status</th><th>Tempo</th><th>Enviado (POST /log)</th></tr></thead>
+            <thead><tr><th>Data/hora</th><th>Método</th><th>Rota</th><th>Status</th><th>Tempo</th><th>Enviado</th></tr></thead>
             <tbody>
               {logs.map((l) => (
                 <tr key={l.id}><td data-label="Data/hora">{formatarDataHora(l.dataHora)}</td><td data-label="Método">{l.metodo}</td><td data-label="Rota">{l.rota}</td><td data-label="Status">{l.statusCode}</td><td data-label="Tempo">{l.tempoMs} ms</td><td data-label="Enviado">{l.enviado ? 'sim' : 'não'}</td></tr>
