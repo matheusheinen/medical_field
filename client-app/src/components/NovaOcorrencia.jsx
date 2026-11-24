@@ -3,7 +3,9 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { LocalRepository as local } from '../repositories/LocalRepository';
 import { registrarOcorrencia } from '../services/AtendimentoService';
 import { useConectividade } from '../hooks';
+import Icone from './Icone';
 import { cpfCompleto, mascararCpf } from '../util/cpf';
+import { mascararTelefone, telefoneCompleto } from '../util/telefone';
 
 const GLASGOW = {
   glasgowOcular: ['Ausente', 'À dor', 'À voz', 'Espontânea'],
@@ -29,8 +31,9 @@ const atendimentoVazio = () => ({
   triagemManchester: '', triagemStart: '', procedimentos: '', observacoes: '', destino: '',
 });
 
-function Campo({ rotulo, children, largo }) {
-  return <label className={largo ? 'campo largo' : 'campo'}><span>{rotulo}</span>{children}</label>;
+function Campo({ rotulo, children, largo, linha }) {
+  const classe = linha ? 'campo linha-inteira' : largo ? 'campo largo' : 'campo';
+  return <label className={classe}><span>{rotulo}</span>{children}</label>;
 }
 
 export default function NovaOcorrencia({ profissional, aoConcluir }) {
@@ -40,6 +43,7 @@ export default function NovaOcorrencia({ profissional, aoConcluir }) {
 
   const [busca, setBusca] = useState('');
   const [pessoa, setPessoa] = useState(pessoaVazia);
+  const [telefoneSalvo, setTelefoneSalvo] = useState('');   // telefone como veio do banco (cadastros antigos podem estar sem DDD)
   const [prontuario, setProntuario] = useState(prontuarioVazio);
   const [at, setAt] = useState(atendimentoVazio);
   const [meds, setMeds] = useState([]);
@@ -59,12 +63,14 @@ export default function NovaOcorrencia({ profissional, aoConcluir }) {
   async function selecionarPessoa(p) {
     const pr = await local.prontuarioDaPessoa(p.id);
     setPessoa({ ...pessoaVazia, ...Object.fromEntries(Object.entries(p).map(([k, v]) => [k, v ?? ''])) });
+    setTelefoneSalvo(p.telefone ?? '');
     setProntuario(pr ? { ...prontuarioVazio, ...Object.fromEntries(Object.entries(pr).map(([k, v]) => [k, v ?? ''])) } : prontuarioVazio);
     setBusca('');
   }
 
   function novoPaciente() {
     setPessoa(pessoaVazia);
+    setTelefoneSalvo('');
     setProntuario(prontuarioVazio);
   }
 
@@ -94,6 +100,8 @@ export default function NovaOcorrencia({ profissional, aoConcluir }) {
     e.preventDefault();
     setErro(null);
     if (!cpfCompleto(pessoa.cpf)) { setErro('CPF incompleto: informe os 11 dígitos ou deixe o campo vazio.'); return; }
+    // só confere o telefone se ele foi digitado agora: um cadastro antigo sem DDD não pode travar o atendimento
+    if (pessoa.telefone !== telefoneSalvo && !telefoneCompleto(pessoa.telefone)) { setErro('Telefone incompleto: informe DDD e número ou deixe o campo vazio.'); return; }
     const alertas = meds.map(doseExcessiva).filter(Boolean);
     if (alertas.length && !window.confirm(
       `ATENÇÃO: dose acima da máxima cadastrada para ${alertas.map((a) => `${a.nome} (máx. ${a.doseMaxima} ${a.unidade})`).join(', ')}.\nConfirmar mesmo assim?`)) return;
@@ -158,7 +166,7 @@ export default function NovaOcorrencia({ profissional, aoConcluir }) {
               <option value="">—</option><option value="F">Feminino</option><option value="M">Masculino</option><option value="O">Outro</option>
             </select>
           </Campo>
-          <Campo rotulo="Telefone"><input name="telefone" type="tel" value={pessoa.telefone} onChange={alterar(setPessoa)} maxLength={20} /></Campo>
+          <Campo rotulo="Telefone"><input name="telefone" type="tel" value={pessoa.telefone} onChange={(e) => setPessoa((o) => ({ ...o, telefone: mascararTelefone(e.target.value) }))} placeholder="(51) 99999-0000" inputMode="numeric" maxLength={15} /></Campo>
           <Campo rotulo="E-mail do paciente"><input type="email" name="email" value={pessoa.email} onChange={alterar(setPessoa)} maxLength={120} /></Campo>
           <Campo rotulo="Contato de emergência (familiar)"><input name="contatoEmergenciaNome" value={pessoa.contatoEmergenciaNome} onChange={alterar(setPessoa)} maxLength={120} /></Campo>
           <Campo rotulo="E-mail do familiar"><input type="email" name="contatoEmergenciaEmail" value={pessoa.contatoEmergenciaEmail} onChange={alterar(setPessoa)} maxLength={120} /></Campo>
@@ -167,15 +175,16 @@ export default function NovaOcorrencia({ profissional, aoConcluir }) {
 
       <section className="painel">
         <h2>2. Prontuário</h2>
-        <div className="grade">
+        {/* Layout fixo: tipo sanguíneo + alergias na 1ª linha; comorbidades + uso contínuo na 2ª */}
+        <div className="grade grade-prontuario">
           <Campo rotulo="Tipo sanguíneo">
             <select name="tipoSanguineo" value={prontuario.tipoSanguineo} onChange={alterar(setProntuario)}>
               <option value="">—</option>{['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((t) => <option key={t}>{t}</option>)}
             </select>
           </Campo>
-          <Campo rotulo="Alergias" largo><input name="alergias" value={prontuario.alergias} onChange={alterar(setProntuario)} placeholder="Separe por vírgula" /></Campo>
-          <Campo rotulo="Comorbidades" largo><input name="comorbidades" value={prontuario.comorbidades} onChange={alterar(setProntuario)} /></Campo>
-          <Campo rotulo="Medicamentos de uso contínuo" largo><input name="medicamentosContinuos" value={prontuario.medicamentosContinuos} onChange={alterar(setProntuario)} /></Campo>
+          <Campo rotulo="Alergias"><input name="alergias" value={prontuario.alergias} onChange={alterar(setProntuario)} placeholder="Separe por vírgula" /></Campo>
+          <Campo rotulo="Comorbidades"><input name="comorbidades" value={prontuario.comorbidades} onChange={alterar(setProntuario)} /></Campo>
+          <Campo rotulo="Medicamentos de uso contínuo"><input name="medicamentosContinuos" value={prontuario.medicamentosContinuos} onChange={alterar(setProntuario)} /></Campo>
         </div>
       </section>
 
@@ -262,15 +271,22 @@ export default function NovaOcorrencia({ profissional, aoConcluir }) {
       <section className="painel">
         <h2>6. Conduta</h2>
         <div className="grade">
-          <Campo rotulo="Procedimentos realizados" largo><textarea name="procedimentos" value={at.procedimentos} onChange={alterar(setAt)} rows={2} /></Campo>
-          <Campo rotulo="Observações" largo><textarea name="observacoes" value={at.observacoes} onChange={alterar(setAt)} rows={2} /></Campo>
+          <Campo rotulo="Procedimentos realizados" linha><textarea name="procedimentos" value={at.procedimentos} onChange={alterar(setAt)} rows={4} /></Campo>
+          <Campo rotulo="Observações" linha><textarea name="observacoes" value={at.observacoes} onChange={alterar(setAt)} rows={4} /></Campo>
           <Campo rotulo="Destino / hospital" largo><input name="destino" value={at.destino} onChange={alterar(setAt)} maxLength={200} /></Campo>
         </div>
       </section>
 
-      {erro && <div className="alerta erro">{erro}</div>}
-      <div className="rodape-form">
+      {/* Barra fixa no fim da tela: o botão fica sempre ao alcance, e a cor mostra para onde o registro vai */}
+      <div className={`barra-registrar ${online ? '' : 'offline'}`}>
+        {/* o erro aparece na própria barra: ela está sempre visível, o fim do formulário nem sempre */}
+        {erro && <div className="alerta erro barra-registrar-erro" role="alert">{erro}</div>}
+        <div className="barra-registrar-info">
+          <b>{pessoa.nome.trim() || 'Paciente não informado'}</b>
+          {!online && <span>Sem conexão: fica salvo no aparelho e é enviado depois</span>}
+        </div>
         <button className="primario grande" disabled={salvando}>
+          <Icone nome={salvando ? 'atualizar' : online ? 'check' : 'semSinal'} className={salvando ? 'girando' : ''} />
           {salvando ? 'Salvando…' : online ? 'Registrar atendimento' : 'Registrar atendimento (offline)'}
         </button>
       </div>

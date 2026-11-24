@@ -3,6 +3,7 @@ import { api, fmt, novoUuid } from '../api';
 import Icone from '../ui/Icone';
 import { Alerta, Campo, Modal } from '../ui/componentes';
 import { cpfCompleto, mascararCpf } from '../ui/cpf';
+import { mascararTelefone, telefoneCompleto } from '../ui/telefone';
 import TabelaAtendimentos from '../ui/TabelaAtendimentos';
 import FichaAtendimento from './FichaAtendimento';
 
@@ -76,6 +77,8 @@ export default function PacienteModal({ pessoaId: idInicial, abaInicial = 'dados
   async function salvarPessoa(e) {
     e.preventDefault();
     if (!cpfCompleto(formPessoa.cpf)) { setMsg({ tipo: 'erro', texto: 'CPF incompleto: informe os 11 dígitos ou deixe o campo vazio.' }); return; }
+    // só confere o telefone se foi alterado: cadastros antigos podem estar sem DDD
+    if (formPessoa.telefone !== (pessoa?.telefone ?? '') && !telefoneCompleto(formPessoa.telefone)) { setMsg({ tipo: 'erro', texto: 'Telefone incompleto: informe DDD e número ou deixe o campo vazio.' }); return; }
     setSalvando(true); setMsg(null);
     try {
       const id = pessoaId ?? novoUuid();
@@ -142,7 +145,7 @@ export default function PacienteModal({ pessoaId: idInicial, abaInicial = 'dados
                 <option value="">Não informado</option><option value="F">Feminino</option><option value="M">Masculino</option><option value="O">Outro</option>
               </select>
             </Campo>
-            <Campo rotulo="Telefone"><input name="telefone" value={formPessoa.telefone} onChange={ap} placeholder="(51) 99999-0000" maxLength={20} /></Campo>
+            <Campo rotulo="Telefone"><input name="telefone" type="tel" value={formPessoa.telefone} onChange={(e) => setFormPessoa((f) => ({ ...f, telefone: mascararTelefone(e.target.value) }))} placeholder="(51) 99999-0000" inputMode="numeric" maxLength={15} /></Campo>
             <Campo rotulo="E-mail" largo><input type="email" name="email" value={formPessoa.email} onChange={ap} maxLength={120} /></Campo>
             <Campo rotulo="Contato de emergência"><input name="contatoEmergenciaNome" value={formPessoa.contatoEmergenciaNome} onChange={ap} maxLength={120} /></Campo>
             <Campo rotulo="E-mail do contato" dica="Usado para enviar a ficha de atendimento ao familiar.">

@@ -137,6 +137,24 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 .campo { display: grid; gap: 5px; font-size: .82rem; font-weight: 600; color: var(--texto-2); align-content: start; }
 .campo.largo { grid-column: span 2; }
 @media (max-width: 480px) { .campo.largo { grid-column: span 1; } }
+/* Campo que ocupa a linha toda (textos longos da conduta) */
+.campo.linha-inteira { grid-column: 1 / -1; }
+/* Prontuário: 6 colunas para o tipo sanguíneo ficar estreito e as alergias largas, sem pular de linha */
+.grade.grade-prontuario { grid-template-columns: repeat(6, 1fr); }
+.grade-prontuario > .campo:nth-child(1) { grid-column: span 1; }
+.grade-prontuario > .campo:nth-child(2) { grid-column: span 5; }
+.grade-prontuario > .campo:nth-child(n+3) { grid-column: span 3; }
+@media (max-width: 720px) {
+  .grade.grade-prontuario { grid-template-columns: 1fr 2fr; }
+  .grade-prontuario > .campo:nth-child(1) { grid-column: span 1; }
+  .grade-prontuario > .campo:nth-child(2) { grid-column: span 1; }
+  .grade-prontuario > .campo:nth-child(n+3) { grid-column: 1 / -1; }
+}
+@media (max-width: 480px) {
+  .grade.grade-prontuario { grid-template-columns: 1fr; }
+  .grade-prontuario > .campo:nth-child(n) { grid-column: 1 / -1; }
+}
+.campo.linha-inteira textarea { min-height: 96px; resize: vertical; }
 .linha { display: flex; gap: 8px; align-items: center; }
 .sugestoes { list-style: none; padding: 4px; margin: 6px 0; border: 1px solid var(--borda); border-radius: var(--raio-sm); box-shadow: var(--sombra); }
 .sugestoes button { width: 100%; justify-content: flex-start; border: none; min-height: 40px; }
@@ -166,6 +184,24 @@ legend { font-size: .82rem; font-weight: 600; color: var(--texto-2); padding: 0 
 .aviso-dose { grid-column: 1 / -1; color: var(--vermelho); font-size: .86rem; font-weight: 600; }
 @media (max-width: 724px) { .linha-med { grid-template-columns: 1fr 1fr; } }
 .rodape-form { display: flex; justify-content: center; gap: 8px; padding-top: 4px; }
+/* Barra de registrar: fixa no fim da tela enquanto o formulário é preenchido */
+.barra-registrar {
+  position: sticky; bottom: 0; z-index: 5;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px;
+  padding: 12px 16px; margin-top: 4px;
+  background: var(--superficie); border: 1px solid var(--borda); border-top: 3px solid var(--primaria);
+  border-radius: var(--raio); box-shadow: 0 -4px 16px rgba(16, 24, 40, .08);
+}
+.barra-registrar-erro { flex-basis: 100%; margin: 0; }
+.barra-registrar-info { display: flex; flex-direction: column; min-width: 0; }
+.barra-registrar-info b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.barra-registrar-info span { font-size: .85rem; color: var(--texto-2); }
+.barra-registrar button.grande { display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-width: 280px; min-height: 52px; border-radius: var(--raio); font-weight: 700; }
+/* Offline: âmbar, para o socorrista ver que o registro fica no aparelho */
+.barra-registrar.offline { border-top-color: var(--ambar); background: var(--ambar-claro); }
+.barra-registrar.offline button.primario { background: var(--ambar); border-color: var(--ambar); }
+.barra-registrar.offline button.primario:hover:not(:disabled) { background: #6f4000; border-color: #6f4000; }
 .rodape-form button.grande { min-width: 320px; min-height: 52px; border-radius: var(--raio); }
 
 /* ---------------------------------------------------------------- alertas, selos, tabelas */
@@ -226,6 +262,8 @@ button.perigo:hover:not(:disabled) { background: #8f1c13; border-color: #8f1c13;
   th, td { padding: 9px 12px; }
   /* Botão principal do formulário na largura toda, alinhado aos painéis */
   .rodape-form button.grande { width: 100%; min-width: 0; }
+  .barra-registrar { flex-direction: column; align-items: stretch; gap: 8px; margin: 4px -10px 0; border-radius: 0; }
+  .barra-registrar button.grande { width: 100%; min-width: 0; }
   /* O campo de data/hora do navegador não encolhe abaixo de ~210px: com duas colunas estreitas
      ele invadia o campo ao lado (Local). No celular ocupa a linha inteira. */
   .grade .campo:has(input[type='datetime-local']) { grid-column: 1 / -1; }
